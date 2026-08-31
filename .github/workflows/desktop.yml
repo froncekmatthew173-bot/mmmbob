@@ -165,13 +165,15 @@ jobs:
           haxelib list | grep -i lime || true
           ls -l ~/haxelib/lime/8.2.2/ndll/Mac* 2>/dev/null | head -n 20 || ls -l ~/haxelib/lime/*/ndll/Mac* 2>/dev/null | head -n 20 || true
           file ~/haxelib/lime/8.2.2/ndll/Mac64/lime.ndll 2>/dev/null | head -n 5 || file ~/haxelib/lime/*/ndll/Mac64/lime.ndll 2>/dev/null | head -n 5 || true
-          haxelib install openfl --quiet
-          haxelib install flixel --quiet
+          haxelib install openfl 9.3.3 --quiet || haxelib install openfl --quiet
+          haxelib install flixel 5.6.1 --quiet || haxelib install flixel 5.3.1 --quiet || haxelib install flixel --quiet
+          haxelib set flixel 5.6.1 2>/dev/null || haxelib set flixel 5.3.1 2>/dev/null || true
           haxelib run lime setup flixel --quiet 2>&1 || true
           haxelib run lime setup --quiet 2>&1 || true
           haxelib install flixel-tools --quiet || true
-          haxelib install flixel-addons --quiet
-          haxelib install flixel-ui --quiet
+          haxelib install flixel-addons 3.2.2 --quiet || haxelib install flixel-addons --quiet
+          haxelib set flixel-addons 3.2.2 2>/dev/null || true
+          haxelib install flixel-ui 2.5.0 --quiet || haxelib install flixel-ui --quiet
           haxelib install hscript --quiet
           haxelib install actuate --quiet
           haxelib install newgrounds --quiet
