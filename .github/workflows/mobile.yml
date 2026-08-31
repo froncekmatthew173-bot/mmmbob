@@ -1,7 +1,7 @@
-name: Mobile Build
+name: Mobile Build (Android & iOS)
+
 env:
   ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
- (Android & iOS)
 
 on:
   push:
