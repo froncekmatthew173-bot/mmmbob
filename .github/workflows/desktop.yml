@@ -48,9 +48,10 @@ jobs:
 
       - name: Setup haxelib
         run: |
+        shell: bash
           haxelib setup ~/haxelib
-          haxelib --version
-          lime --version || echo "lime not yet installed"
+          haxelib version
+          haxelib run lime --version || echo "lime not yet installed"
 
       - name: Install system dependencies (Linux)
         if: matrix.os == 'ubuntu-latest'
@@ -60,6 +61,7 @@ jobs:
 
       - name: Install Haxelibs
         run: |
+        shell: bash
           haxelib install lime 8.1.0 --quiet || haxelib install lime --quiet
           haxelib install openfl --quiet
           haxelib install flixel --quiet

@@ -38,14 +38,16 @@ jobs:
 
       - name: Setup haxelib
         run: |
+        shell: bash
           haxelib setup ~/haxelib
-          haxelib --version
+          haxelib version
 
       - name: Setup Android SDK / NDK
         uses: android-actions/setup-android@v3
 
       - name: Install Haxelibs
         run: |
+        shell: bash
           haxelib install lime 8.1.0 --quiet || haxelib install lime --quiet
           haxelib install openfl --quiet
           haxelib install flixel --quiet
@@ -66,6 +68,7 @@ jobs:
 
       - name: Setup lime for Android
         run: |
+        shell: bash
           haxelib run lime setup android --quiet || true
           # Accept licenses
           yes | sdkmanager --licenses || true
@@ -119,8 +122,9 @@ jobs:
 
       - name: Setup haxelib
         run: |
+        shell: bash
           haxelib setup ~/haxelib
-          haxelib --version
+          haxelib version
 
       - name: Select Xcode
         run: |
@@ -130,6 +134,7 @@ jobs:
 
       - name: Install Haxelibs
         run: |
+        shell: bash
           haxelib install lime 8.1.0 --quiet || haxelib install lime --quiet
           haxelib install openfl --quiet
           haxelib install flixel --quiet
