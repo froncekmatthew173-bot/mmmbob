@@ -1,4 +1,4 @@
-name: Mobile Build (Android)
+name: Mobile Build (Android & iOS)
 
 on:
   push:
@@ -92,4 +92,84 @@ jobs:
           path: |
             export/release/android/bin/app/build/outputs/apk/release/*.apk
             export/final/android/bin/app/build/outputs/apk/release/*.apk
+          if-no-files-found: warn
+
+  buildIOS:
+    name: Build iOS
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Haxe
+        uses: krdlab/setup-haxe@v1
+        with:
+          haxe-version: 4.3.7
+
+      - name: Restore haxelib cache
+        uses: actions/cache@v4
+        with:
+          path: ~/haxelib
+          key: macos-haxelib-ios-${{ hashFiles('Project.xml') }}
+          restore-keys: |
+            macos-haxelib-ios-
+
+      - name: Setup haxelib
+        run: |
+          haxelib setup ~/haxelib
+          haxelib --version
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer || sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer || true
+          xcodebuild -version
+          xcode-select -p
+
+      - name: Install Haxelibs
+        run: |
+          haxelib install lime 8.1.0 --quiet || haxelib install lime --quiet
+          haxelib install openfl --quiet
+          haxelib install flixel --quiet
+          haxelib run lime setup flixel --quiet || true
+          haxelib run lime setup --quiet || true
+          haxelib install flixel-tools --quiet || true
+          haxelib install flixel-addons --quiet
+          haxelib install flixel-ui --quiet
+          haxelib install hscript --quiet
+          haxelib install actuate --quiet
+          haxelib install newgrounds --quiet
+          haxelib git polymod https://github.com/larsiusprime/polymod.git --quiet || haxelib install polymod --quiet
+          haxelib git faxe https://github.com/uhrobots/faxe --quiet || true
+          haxelib git discord_rpc https://github.com/Aidan63/linc_discord-rpc --quiet || true
+          haxelib git extension-webm https://github.com/KadeDev/extension-webm --quiet || true
+          haxelib list
+
+      - name: Setup lime for iOS
+        run: haxelib run lime setup ios --quiet || true
+
+      - name: Build iOS (Debug - Simulator)
+        run: haxelib run lime build ios -debug -simulator
+
+      - name: Build iOS (Release)
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        run: haxelib run lime build ios -final || haxelib run lime build ios -release || true
+
+      - name: Upload iOS Debug Export
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-debug
+          path: |
+            export/debug/ios/bin
+            export/release/ios/bin
+            export/ios/bin
+          if-no-files-found: warn
+
+      - name: Upload iOS Release IPA (if signed)
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-release
+          path: |
+            export/release/ios/build/**/*.ipa
+            export/ios/build/**/*.ipa
           if-no-files-found: warn
