@@ -34,33 +34,86 @@ jobs:
           HAXE_VERSION=4.3.7
           echo "Installing Haxe $HAXE_VERSION for ${{ runner.os }} $(uname -m 2>/dev/null || echo unknown)"
           if [[ "${{ runner.os }}" == "Windows" ]]; then
-            choco install haxe --version $HAXE_VERSION -y --allow-downgrade || true
-            # Ensure haxe in PATH
-            echo "C:/ProgramData/chocolatey/bin" >> $GITHUB_PATH || true
-            echo "C:/tools/haxe" >> $GITHUB_PATH || true
-            export PATH="$PATH:/c/ProgramData/chocolatey/bin:/c/tools/haxe"
-          elif [[ "${{ runner.os }}" == "macOS" ]]; then
-            ARCH=$(uname -m)
-            echo "Mac arch: $ARCH"
-            if [[ "$ARCH" == "arm64" ]]; then
-              # Try arm64 tarball first, fallback to x64
-              wget -q https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-osx-arm64.tar.gz -O /tmp/haxe.tar.gz || wget -q https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-osx.tar.gz -O /tmp/haxe.tar.gz || brew install haxe || true
-              if [ -f /tmp/haxe.tar.gz ]; then
-                tar -xzf /tmp/haxe.tar.gz -C /tmp || true
-                sudo mkdir -p /usr/local/haxe
-                sudo cp -R /tmp/haxe*/* /usr/local/haxe/ 2>/dev/null || sudo cp -R /tmp/haxe_*/* /usr/local/haxe/ 2>/dev/null || true
-                sudo ln -sf /usr/local/haxe/haxe /usr/local/bin/haxe || true
-                sudo ln -sf /usr/local/haxe/haxelib /usr/local/bin/haxelib || true
+            echo "Installing Haxe on Windows $HAXE_VERSION"
+            # Try direct download first (more reliable than choco version pin)
+            HAXE_URL="https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-win64.zip"
+            rm -rf /tmp/haxe.zip /tmp/haxe-extract
+            mkdir -p /tmp/haxe-extract
+            if wget -q $HAXE_URL -O /tmp/haxe.zip 2>/dev/null || curl -L -o /tmp/haxe.zip $HAXE_URL 2>/dev/null; then
+              echo "Downloaded Haxe win64 zip"
+              unzip -q /tmp/haxe.zip -d /tmp/haxe-extract 2>/dev/null || 7z x /tmp/haxe.zip -o/tmp/haxe-extract -y 2>/dev/null || powershell -Command "Expand-Archive -Force /tmp/haxe.zip /tmp/haxe-extract" 2>/dev/null || true
+              mkdir -p /c/tools/haxe
+              # Find haxe.exe
+              HAXE_EXE=$(find /tmp/haxe-extract -name "haxe.exe" 2>/dev/null | head -n 1)
+              if [ -n "$HAXE_EXE" ]; then
+                HAXE_DIR=$(dirname "$HAXE_EXE")
+                cp -r "$HAXE_DIR"/* /c/tools/haxe/ 2>/dev/null || true
+                cp -r /tmp/haxe-extract/* /c/tools/haxe/ 2>/dev/null || true
+              else
+                cp -r /tmp/haxe-extract/* /c/tools/haxe/ 2>/dev/null || true
               fi
-              brew install neko 2>/dev/null || true
-            else
-              wget -q https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-osx.tar.gz -O /tmp/haxe.tar.gz || brew install haxe || true
+              echo "/c/tools/haxe" >> $GITHUB_PATH
+              echo "C:/tools/haxe" >> $GITHUB_PATH
+              export PATH="$PATH:/c/tools/haxe"
+              ls -l /c/tools/haxe/haxe.exe 2>/dev/null || ls -l /c/tools/haxe/* 2>/dev/null | head -n 20 || true
+            fi
+            # Fallback to choco if still not found
+            if ! command -v haxe >/dev/null 2>&1; then
+              echo "Falling back to choco"
+              choco install haxe -y --allow-downgrade 2>/dev/null || choco install haxe -y 2>/dev/null || true
+              echo "C:/ProgramData/chocolatey/bin" >> $GITHUB_PATH
+              echo "C:/tools/haxe" >> $GITHUB_PATH
+              export PATH="$PATH:/c/ProgramData/chocolatey/bin:/c/tools/haxe"
+            fi
+            # Ensure neko on Windows
+            # haxe windows bundle includes neko, but install via choco as fallback
+            if ! command -v neko >/dev/null 2>&1; then
+              choco install neko -y 2>/dev/null || true
+              echo "C:/ProgramData/chocolatey/bin" >> $GITHUB_PATH
+            fi
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then
+            echo "Installing Haxe via Homebrew (handles arm64/x64 + libneko correctly)"
+            # Clean old manual install that has broken @rpath
+            sudo rm -rf /usr/local/haxe /usr/local/bin/haxe /usr/local/bin/haxelib 2>/dev/null || true
+            brew update 2>/dev/null || true
+            # Prefer brew which correctly installs haxe+neko with proper dylib rpath for both Intel and Apple Silicon
+            brew install haxe 2>/dev/null || brew upgrade haxe 2>/dev/null || true
+            brew install neko 2>/dev/null || brew upgrade neko 2>/dev/null || true
+            brew link --overwrite haxe 2>/dev/null || true
+            brew link --overwrite neko 2>/dev/null || true
+            # Ensure brew paths in PATH
+            echo "/opt/homebrew/bin" >> $GITHUB_PATH
+            echo "/usr/local/bin" >> $GITHUB_PATH
+            echo "/opt/homebrew/lib" >> $GITHUB_LD_LIBRARY_PATH 2>/dev/null || true
+            # Fixup rpath for manual fallback: ensure libneko can be found at /usr/local/lib for haxelib's @rpath
+            sudo mkdir -p /usr/local/lib
+            if [ -f /opt/homebrew/lib/libneko.2.dylib ]; then
+              sudo ln -sf /opt/homebrew/lib/libneko.2.dylib /usr/local/lib/libneko.2.dylib 2>/dev/null || true
+              sudo ln -sf /opt/homebrew/lib/libneko.dylib /usr/local/lib/libneko.dylib 2>/dev/null || true
+            fi
+            if [ -f /usr/local/Cellar/neko/*/libneko.2.dylib ]; then
+              sudo ln -sf /usr/local/Cellar/neko/*/libneko.2.dylib /usr/local/lib/libneko.2.dylib 2>/dev/null || true
+            fi
+            # Fallback to tarball if brew still not found
+            if ! command -v haxe >/dev/null 2>&1; then
+              echo "brew haxe failed, trying tarball"
+              ARCH=$(uname -m)
+              if [[ "$ARCH" == "arm64" ]]; then
+                wget -q https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-osx-arm64.tar.gz -O /tmp/haxe.tar.gz || wget -q https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-osx.tar.gz -O /tmp/haxe.tar.gz || true
+              else
+                wget -q https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-osx.tar.gz -O /tmp/haxe.tar.gz || true
+              fi
               if [ -f /tmp/haxe.tar.gz ]; then
                 tar -xzf /tmp/haxe.tar.gz -C /tmp || true
                 sudo mkdir -p /usr/local/haxe
                 sudo cp -R /tmp/haxe*/* /usr/local/haxe/ 2>/dev/null || true
                 sudo ln -sf /usr/local/haxe/haxe /usr/local/bin/haxe || true
                 sudo ln -sf /usr/local/haxe/haxelib /usr/local/bin/haxelib || true
+                # Fix libneko for manual install
+                if [ -f /usr/local/haxe/libneko.2.dylib ]; then
+                  sudo mkdir -p /usr/local/lib
+                  sudo cp /usr/local/haxe/libneko.2.dylib /usr/local/lib/ 2>/dev/null || true
+                fi
               fi
             fi
           else
@@ -89,8 +142,16 @@ jobs:
       - name: Setup haxelib
         shell: bash
         run: |
-          haxelib setup ~/haxelib
-          haxelib version
+          export PATH="/opt/homebrew/bin:/usr/local/bin:/c/tools/haxe:/c/ProgramData/chocolatey/bin:$HOME/haxelib:$PATH"
+          export DYLD_FALLBACK_LIBRARY_PATH="/opt/homebrew/lib:/usr/local/lib:$DYLD_FALLBACK_LIBRARY_PATH" 2>/dev/null || true
+          export DYLD_LIBRARY_PATH="/opt/homebrew/lib:/usr/local/lib:$DYLD_LIBRARY_PATH" 2>/dev/null || true
+          echo "PATH=$PATH"
+          echo "GITHUB_PATH:"
+          cat "$GITHUB_PATH" 2>/dev/null || true
+          which haxelib 2>/dev/null || where haxelib 2>/dev/null || find /c/tools -name "haxelib*" 2>/dev/null | head -n 20 || find /usr/local -name "haxelib" 2>/dev/null | head -n 20 || true
+          ls -l /c/tools/haxe/ 2>/dev/null | head -n 20 || ls -l /usr/local/bin/haxelib* 2>/dev/null | head -n 20 || true
+          haxelib setup ~/haxelib || haxelib setup $HOME/haxelib || true
+          haxelib version || true
           haxelib run lime --version || echo "lime not yet installed"
 
       - name: Install system dependencies (Linux)
