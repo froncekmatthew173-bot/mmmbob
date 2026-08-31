@@ -64,14 +64,30 @@ jobs:
             sudo rm -rf /usr/local/haxe /usr/local/bin/haxe /usr/local/bin/haxelib 2>/dev/null || true
             brew update 2>/dev/null || true
             # Prefer brew which correctly installs haxe+neko with proper dylib rpath for both Intel and Apple Silicon
-            brew install haxe 2>/dev/null || brew upgrade haxe 2>/dev/null || true
-            brew install neko 2>/dev/null || brew upgrade neko 2>/dev/null || true
-            brew link --overwrite haxe 2>/dev/null || true
-            brew link --overwrite neko 2>/dev/null || true
-            # Ensure brew paths in PATH for this step and next steps
-            export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+            # For lime 7.9.0 (x86_64 only) + flixel 4.11.0, force x86_64 Haxe on arm64 via Rosetta
+            if [[ "$(uname -m)" == "arm64" ]]; then
+              echo "arm64 macOS: installing x86_64 Haxe for lime 7.9.0 compatibility via Rosetta"
+              arch -x86_64 /bin/bash -c "brew update 2>/dev/null || true; brew install haxe 2>/dev/null || brew upgrade haxe 2>/dev/null || true; brew install neko 2>/dev/null || brew upgrade neko 2>/dev/null || true; brew link --overwrite haxe 2>/dev/null || true; brew link --overwrite neko 2>/dev/null || true" || true
+              # Also ensure x64 tarball as fallback
+              wget -q https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-osx.tar.gz -O /tmp/haxe.tar.gz 2>/dev/null || true
+              if [ -f /tmp/haxe.tar.gz ]; then
+                tar -xzf /tmp/haxe.tar.gz -C /tmp 2>/dev/null || true
+                sudo mkdir -p /usr/local/haxe
+                sudo cp -R /tmp/haxe*/* /usr/local/haxe/ 2>/dev/null || true
+                sudo ln -sf /usr/local/haxe/haxe /usr/local/bin/haxe 2>/dev/null || true
+                sudo ln -sf /usr/local/haxe/haxelib /usr/local/bin/haxelib 2>/dev/null || true
+              fi
+            else
+              brew install haxe 2>/dev/null || brew upgrade haxe 2>/dev/null || true
+              brew install neko 2>/dev/null || brew upgrade neko 2>/dev/null || true
+              brew link --overwrite haxe 2>/dev/null || true
+              brew link --overwrite neko 2>/dev/null || true
+            fi
+            # Ensure brew paths in PATH for this step and next steps (both Intel and Apple Silicon brew prefixes)
+            export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/local/haxe:$PATH"
             echo "/opt/homebrew/bin" >> $GITHUB_PATH
             echo "/usr/local/bin" >> $GITHUB_PATH
+            echo "/usr/local/haxe" >> $GITHUB_PATH
             echo "/opt/homebrew/lib" >> $GITHUB_LD_LIBRARY_PATH 2>/dev/null || true
             # Fixup rpath for manual fallback: ensure libneko can be found at /usr/local/lib for haxelib's @rpath
             sudo mkdir -p /usr/local/lib
@@ -82,15 +98,10 @@ jobs:
             if [ -f /usr/local/Cellar/neko/*/libneko.2.dylib ]; then
               sudo ln -sf /usr/local/Cellar/neko/*/libneko.2.dylib /usr/local/lib/libneko.2.dylib 2>/dev/null || true
             fi
-            # Fallback to tarball if brew still not found
+            # Fallback to tarball if brew still not found - use x64 for compatibility with lime 7.9.0 (x86_64 only)
             if ! command -v haxe >/dev/null 2>&1; then
-              echo "brew haxe failed, trying tarball"
-              ARCH=$(uname -m)
-              if [[ "$ARCH" == "arm64" ]]; then
-                wget -q https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-osx-arm64.tar.gz -O /tmp/haxe.tar.gz || wget -q https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-osx.tar.gz -O /tmp/haxe.tar.gz || true
-              else
-                wget -q https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-osx.tar.gz -O /tmp/haxe.tar.gz || true
-              fi
+              echo "brew haxe failed, trying tarball x64 (for lime 7.9.0 compatibility)"
+              wget -q https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-osx.tar.gz -O /tmp/haxe.tar.gz || true
               if [ -f /tmp/haxe.tar.gz ]; then
                 tar -xzf /tmp/haxe.tar.gz -C /tmp || true
                 sudo mkdir -p /usr/local/haxe
@@ -121,9 +132,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/haxelib
-          key: ubuntu-haxelib-mobile-lime822-${{ hashFiles('Project.xml') }}
+          key: ubuntu-haxelib-mobile-lime790-${{ hashFiles('Project.xml') }}
           restore-keys: |
-            ubuntu-haxelib-mobile-lime822-
+            ubuntu-haxelib-mobile-lime790-
 
       - name: Setup haxelib
         shell: bash
@@ -145,21 +156,17 @@ jobs:
       - name: Install Haxelibs
         shell: bash
         run: |
-          haxelib install lime 8.2.2 --quiet || haxelib install lime --quiet
-          haxelib set lime 8.2.2 2>/dev/null || true
-          # Verify lime arch is arm64 compatible
-          haxelib list | grep -i lime || true
-          ls -l ~/haxelib/lime/8.2.2/ndll/Mac* 2>/dev/null | head -n 20 || ls -l ~/haxelib/lime/*/ndll/Mac* 2>/dev/null | head -n 20 || true
-          file ~/haxelib/lime/8.2.2/ndll/Mac64/lime.ndll 2>/dev/null | head -n 5 || file ~/haxelib/lime/*/ndll/Mac64/lime.ndll 2>/dev/null | head -n 5 || true
-          haxelib install openfl 9.3.3 --quiet || haxelib install openfl --quiet
-          haxelib install flixel 5.6.1 --quiet || haxelib install flixel 5.3.1 --quiet || haxelib install flixel --quiet
-          haxelib set flixel 5.6.1 2>/dev/null || haxelib set flixel 5.3.1 2>/dev/null || true
+          haxelib install lime 7.9.0 --quiet || haxelib install lime --quiet
+          haxelib set lime 7.9.0 2>/dev/null || true
+          haxelib install openfl 9.1.0 --quiet || haxelib install openfl 9.3.3 --quiet || haxelib install openfl --quiet
+          haxelib install flixel 4.11.0 --quiet || haxelib install flixel --quiet
+          haxelib set flixel 4.11.0 2>/dev/null || true
           haxelib run lime setup flixel --quiet 2>&1 || true
           haxelib run lime setup --quiet 2>&1 || true
           haxelib install flixel-tools --quiet || true
-          haxelib install flixel-addons 3.2.2 --quiet || haxelib install flixel-addons --quiet
-          haxelib set flixel-addons 3.2.2 2>/dev/null || true
-          haxelib install flixel-ui 2.5.0 --quiet || haxelib install flixel-ui --quiet
+          haxelib install flixel-addons 2.11.0 --quiet || haxelib install flixel-addons --quiet
+          haxelib set flixel-addons 2.11.0 2>/dev/null || true
+          haxelib install flixel-ui 2.4.0 --quiet || haxelib install flixel-ui --quiet
           haxelib install hscript --quiet
           haxelib install actuate --quiet
           haxelib install newgrounds --quiet
@@ -255,14 +262,30 @@ jobs:
             sudo rm -rf /usr/local/haxe /usr/local/bin/haxe /usr/local/bin/haxelib 2>/dev/null || true
             brew update 2>/dev/null || true
             # Prefer brew which correctly installs haxe+neko with proper dylib rpath for both Intel and Apple Silicon
-            brew install haxe 2>/dev/null || brew upgrade haxe 2>/dev/null || true
-            brew install neko 2>/dev/null || brew upgrade neko 2>/dev/null || true
-            brew link --overwrite haxe 2>/dev/null || true
-            brew link --overwrite neko 2>/dev/null || true
-            # Ensure brew paths in PATH for this step and next steps
-            export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+            # For lime 7.9.0 (x86_64 only) + flixel 4.11.0, force x86_64 Haxe on arm64 via Rosetta
+            if [[ "$(uname -m)" == "arm64" ]]; then
+              echo "arm64 macOS: installing x86_64 Haxe for lime 7.9.0 compatibility via Rosetta"
+              arch -x86_64 /bin/bash -c "brew update 2>/dev/null || true; brew install haxe 2>/dev/null || brew upgrade haxe 2>/dev/null || true; brew install neko 2>/dev/null || brew upgrade neko 2>/dev/null || true; brew link --overwrite haxe 2>/dev/null || true; brew link --overwrite neko 2>/dev/null || true" || true
+              # Also ensure x64 tarball as fallback
+              wget -q https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-osx.tar.gz -O /tmp/haxe.tar.gz 2>/dev/null || true
+              if [ -f /tmp/haxe.tar.gz ]; then
+                tar -xzf /tmp/haxe.tar.gz -C /tmp 2>/dev/null || true
+                sudo mkdir -p /usr/local/haxe
+                sudo cp -R /tmp/haxe*/* /usr/local/haxe/ 2>/dev/null || true
+                sudo ln -sf /usr/local/haxe/haxe /usr/local/bin/haxe 2>/dev/null || true
+                sudo ln -sf /usr/local/haxe/haxelib /usr/local/bin/haxelib 2>/dev/null || true
+              fi
+            else
+              brew install haxe 2>/dev/null || brew upgrade haxe 2>/dev/null || true
+              brew install neko 2>/dev/null || brew upgrade neko 2>/dev/null || true
+              brew link --overwrite haxe 2>/dev/null || true
+              brew link --overwrite neko 2>/dev/null || true
+            fi
+            # Ensure brew paths in PATH for this step and next steps (both Intel and Apple Silicon brew prefixes)
+            export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/local/haxe:$PATH"
             echo "/opt/homebrew/bin" >> $GITHUB_PATH
             echo "/usr/local/bin" >> $GITHUB_PATH
+            echo "/usr/local/haxe" >> $GITHUB_PATH
             echo "/opt/homebrew/lib" >> $GITHUB_LD_LIBRARY_PATH 2>/dev/null || true
             # Fixup rpath for manual fallback: ensure libneko can be found at /usr/local/lib for haxelib's @rpath
             sudo mkdir -p /usr/local/lib
@@ -273,15 +296,10 @@ jobs:
             if [ -f /usr/local/Cellar/neko/*/libneko.2.dylib ]; then
               sudo ln -sf /usr/local/Cellar/neko/*/libneko.2.dylib /usr/local/lib/libneko.2.dylib 2>/dev/null || true
             fi
-            # Fallback to tarball if brew still not found
+            # Fallback to tarball if brew still not found - use x64 for compatibility with lime 7.9.0 (x86_64 only)
             if ! command -v haxe >/dev/null 2>&1; then
-              echo "brew haxe failed, trying tarball"
-              ARCH=$(uname -m)
-              if [[ "$ARCH" == "arm64" ]]; then
-                wget -q https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-osx-arm64.tar.gz -O /tmp/haxe.tar.gz || wget -q https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-osx.tar.gz -O /tmp/haxe.tar.gz || true
-              else
-                wget -q https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-osx.tar.gz -O /tmp/haxe.tar.gz || true
-              fi
+              echo "brew haxe failed, trying tarball x64 (for lime 7.9.0 compatibility)"
+              wget -q https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-osx.tar.gz -O /tmp/haxe.tar.gz || true
               if [ -f /tmp/haxe.tar.gz ]; then
                 tar -xzf /tmp/haxe.tar.gz -C /tmp || true
                 sudo mkdir -p /usr/local/haxe
@@ -312,9 +330,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/haxelib
-          key: macos-haxelib-ios-lime822-${{ hashFiles('Project.xml') }}
+          key: macos-haxelib-ios-lime790-${{ hashFiles('Project.xml') }}
           restore-keys: |
-            macos-haxelib-ios-lime822-
+            macos-haxelib-ios-lime790-
 
       - name: Setup haxelib
         shell: bash
@@ -339,21 +357,17 @@ jobs:
       - name: Install Haxelibs
         shell: bash
         run: |
-          haxelib install lime 8.2.2 --quiet || haxelib install lime --quiet
-          haxelib set lime 8.2.2 2>/dev/null || true
-          # Verify lime arch is arm64 compatible
-          haxelib list | grep -i lime || true
-          ls -l ~/haxelib/lime/8.2.2/ndll/Mac* 2>/dev/null | head -n 20 || ls -l ~/haxelib/lime/*/ndll/Mac* 2>/dev/null | head -n 20 || true
-          file ~/haxelib/lime/8.2.2/ndll/Mac64/lime.ndll 2>/dev/null | head -n 5 || file ~/haxelib/lime/*/ndll/Mac64/lime.ndll 2>/dev/null | head -n 5 || true
-          haxelib install openfl 9.3.3 --quiet || haxelib install openfl --quiet
-          haxelib install flixel 5.6.1 --quiet || haxelib install flixel 5.3.1 --quiet || haxelib install flixel --quiet
-          haxelib set flixel 5.6.1 2>/dev/null || haxelib set flixel 5.3.1 2>/dev/null || true
+          haxelib install lime 7.9.0 --quiet || haxelib install lime --quiet
+          haxelib set lime 7.9.0 2>/dev/null || true
+          haxelib install openfl 9.1.0 --quiet || haxelib install openfl 9.3.3 --quiet || haxelib install openfl --quiet
+          haxelib install flixel 4.11.0 --quiet || haxelib install flixel --quiet
+          haxelib set flixel 4.11.0 2>/dev/null || true
           haxelib run lime setup flixel --quiet 2>&1 || true
           haxelib run lime setup --quiet 2>&1 || true
           haxelib install flixel-tools --quiet || true
-          haxelib install flixel-addons 3.2.2 --quiet || haxelib install flixel-addons --quiet
-          haxelib set flixel-addons 3.2.2 2>/dev/null || true
-          haxelib install flixel-ui 2.5.0 --quiet || haxelib install flixel-ui --quiet
+          haxelib install flixel-addons 2.11.0 --quiet || haxelib install flixel-addons --quiet
+          haxelib set flixel-addons 2.11.0 2>/dev/null || true
+          haxelib install flixel-ui 2.4.0 --quiet || haxelib install flixel-ui --quiet
           haxelib install hscript --quiet
           haxelib install actuate --quiet
           haxelib install newgrounds --quiet
