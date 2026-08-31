@@ -1,7 +1,4 @@
 name: iOS Build
-env:
-  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
-
 on:
   push:
     branches: [ main, master ]
@@ -11,15 +8,58 @@ on:
 jobs:
   buildIOS:
     name: Build iOS
-    runs-on: macos-13
+    runs-on: macos-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Haxe
-        uses: krdlab/setup-haxe@v1
-        with:
-          haxe-version: 4.3.7
+        shell: bash
+        run: |
+          HAXE_VERSION=4.3.7
+          echo "Installing Haxe $HAXE_VERSION for ${{ runner.os }} $(uname -m 2>/dev/null || echo unknown)"
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            choco install haxe --version $HAXE_VERSION -y --allow-downgrade || true
+            # Ensure haxe in PATH
+            echo "C:/ProgramData/chocolatey/bin" >> $GITHUB_PATH || true
+            echo "C:/tools/haxe" >> $GITHUB_PATH || true
+            export PATH="$PATH:/c/ProgramData/chocolatey/bin:/c/tools/haxe"
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then
+            ARCH=$(uname -m)
+            echo "Mac arch: $ARCH"
+            if [[ "$ARCH" == "arm64" ]]; then
+              # Try arm64 tarball first, fallback to x64
+              wget -q https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-osx-arm64.tar.gz -O /tmp/haxe.tar.gz || wget -q https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-osx.tar.gz -O /tmp/haxe.tar.gz || brew install haxe || true
+              if [ -f /tmp/haxe.tar.gz ]; then
+                tar -xzf /tmp/haxe.tar.gz -C /tmp || true
+                sudo mkdir -p /usr/local/haxe
+                sudo cp -R /tmp/haxe*/* /usr/local/haxe/ 2>/dev/null || sudo cp -R /tmp/haxe_*/* /usr/local/haxe/ 2>/dev/null || true
+                sudo ln -sf /usr/local/haxe/haxe /usr/local/bin/haxe || true
+                sudo ln -sf /usr/local/haxe/haxelib /usr/local/bin/haxelib || true
+              fi
+              brew install neko 2>/dev/null || true
+            else
+              wget -q https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-osx.tar.gz -O /tmp/haxe.tar.gz || brew install haxe || true
+              if [ -f /tmp/haxe.tar.gz ]; then
+                tar -xzf /tmp/haxe.tar.gz -C /tmp || true
+                sudo mkdir -p /usr/local/haxe
+                sudo cp -R /tmp/haxe*/* /usr/local/haxe/ 2>/dev/null || true
+                sudo ln -sf /usr/local/haxe/haxe /usr/local/bin/haxe || true
+                sudo ln -sf /usr/local/haxe/haxelib /usr/local/bin/haxelib || true
+              fi
+            fi
+          else
+            # Linux
+            wget -q https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-linux64.tar.gz -O /tmp/haxe.tar.gz
+            tar -xzf /tmp/haxe.tar.gz -C /tmp || true
+            sudo mkdir -p /usr/local/haxe
+            sudo cp -R /tmp/haxe_*/* /usr/local/haxe/ 2>/dev/null || sudo cp -R /tmp/haxe*/* /usr/local/haxe/ 2>/dev/null || true
+            sudo ln -sf /usr/local/haxe/haxe /usr/local/bin/haxe || true
+            sudo ln -sf /usr/local/haxe/haxelib /usr/local/bin/haxelib || true
+            sudo apt-get update -qq && sudo apt-get install -y neko 2>/dev/null || true
+          fi
+          haxe --version || echo "haxe not found"
+          haxelib version || echo "haxelib not found"
 
       - name: Restore haxelib cache
         uses: actions/cache@v4
