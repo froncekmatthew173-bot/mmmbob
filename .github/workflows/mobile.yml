@@ -102,7 +102,7 @@ jobs:
 
   buildIOS:
     name: Build iOS
-    runs-on: macos-13
+    runs-on: macos-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
