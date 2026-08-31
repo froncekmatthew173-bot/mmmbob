@@ -47,8 +47,8 @@ jobs:
             ${{ runner.os }}-haxelib-
 
       - name: Setup haxelib
-        run: |
         shell: bash
+        run: |
           haxelib setup ~/haxelib
           haxelib version
           haxelib run lime --version || echo "lime not yet installed"
@@ -60,8 +60,8 @@ jobs:
           sudo apt-get install -y libvlc-dev libvlccore-dev libsdl2-dev
 
       - name: Install Haxelibs
-        run: |
         shell: bash
+        run: |
           haxelib install lime 8.1.0 --quiet || haxelib install lime --quiet
           haxelib install openfl --quiet
           haxelib install flixel --quiet

@@ -30,8 +30,8 @@ jobs:
             macos-haxelib-ios-
 
       - name: Setup haxelib
-        run: |
         shell: bash
+        run: |
           haxelib setup ~/haxelib
           haxelib version
 
@@ -69,8 +69,8 @@ jobs:
           security find-identity -v || true
 
       - name: Install Haxelibs
-        run: |
         shell: bash
+        run: |
           haxelib install lime 8.1.0 --quiet || haxelib install lime --quiet
           haxelib install openfl --quiet
           haxelib install flixel --quiet
@@ -96,8 +96,8 @@ jobs:
 
       - name: Build iOS Release (requires signing)
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-        run: |
         shell: bash
+        run: |
           if [ -n "${{ secrets.IOS_CERTIFICATE }}" ]; then
             haxelib run lime build ios -final || haxelib run lime build ios -release || true
           else

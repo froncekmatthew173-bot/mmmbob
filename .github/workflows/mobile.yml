@@ -37,8 +37,8 @@ jobs:
             ubuntu-haxelib-mobile-
 
       - name: Setup haxelib
-        run: |
         shell: bash
+        run: |
           haxelib setup ~/haxelib
           haxelib version
 
@@ -46,8 +46,8 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install Haxelibs
-        run: |
         shell: bash
+        run: |
           haxelib install lime 8.1.0 --quiet || haxelib install lime --quiet
           haxelib install openfl --quiet
           haxelib install flixel --quiet
@@ -67,8 +67,8 @@ jobs:
           haxelib list
 
       - name: Setup lime for Android
-        run: |
         shell: bash
+        run: |
           haxelib run lime setup android --quiet || true
           # Accept licenses
           yes | sdkmanager --licenses || true
@@ -121,8 +121,8 @@ jobs:
             macos-haxelib-ios-
 
       - name: Setup haxelib
-        run: |
         shell: bash
+        run: |
           haxelib setup ~/haxelib
           haxelib version
 
@@ -133,8 +133,8 @@ jobs:
           xcode-select -p
 
       - name: Install Haxelibs
-        run: |
         shell: bash
+        run: |
           haxelib install lime 8.1.0 --quiet || haxelib install lime --quiet
           haxelib install openfl --quiet
           haxelib install flixel --quiet
