@@ -33,6 +33,9 @@ class Main extends Sprite
 	public function new()
 	{
 		super();
+		#if mobileC
+		SUtil.uncaughtErrorHandler();
+		#end
 
 		if (stage != null)
 		{
@@ -72,6 +75,9 @@ class Main extends Sprite
 		initialState = TitleState;
 		#end
 
+		#if mobileC
+		SUtil.checkFiles();
+		#end
 		game = new FlxGame(gameWidth, gameHeight, initialState, zoom, framerate, framerate, skipSplash, startFullscreen);
 
 		addChild(game);

@@ -29,6 +29,7 @@ class OptionsMenu extends MusicBeatState
 		]),
 		new OptionCatagory("Gameplay", [
 			new DFJKOption(controls),
+			new BotplayOption("Automatically hit notes (BotPlay)"),
 			new Judgement("Customize your Hit Timings (LEFT or RIGHT)"),
 			#if !html
 			new FPSCapOption("Cap your FPS (Left for -10, Right for +10. SHIFT to go faster)"),
@@ -46,6 +47,11 @@ class OptionsMenu extends MusicBeatState
 			new AccuracyOption("Display accuracy information."),
 			new NPSDisplayOption("Shows your current Notes Per Second.")
 		]),
+		#if mobileC
+		new OptionCatagory("Mobile", [
+			new MobileControlsOption("Change Mobile Controls - Select your preferred touch layout")
+		]),
+		#end
 		#if !mobile
 		new OptionCatagory("Misc", [
 			
@@ -90,6 +96,11 @@ class OptionsMenu extends MusicBeatState
 		versionShit.scrollFactor.set();
 		versionShit.setFormat("VCR OSD Mono", 16, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 		add(versionShit);
+
+		#if mobileC
+		addVirtualPad(LEFT_FULL, A_B);
+		addVirtualPadCamera();
+		#end
 
 		super.create();
 	}

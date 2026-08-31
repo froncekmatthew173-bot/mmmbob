@@ -10,6 +10,13 @@ import flixel.input.actions.FlxActionSet;
 import flixel.input.gamepad.FlxGamepadButton;
 import flixel.input.gamepad.FlxGamepadInputID;
 import flixel.input.keyboard.FlxKey;
+#if mobileC
+import mobile.flixel.FlxButton;
+import mobile.flixel.FlxHitbox;
+import mobile.flixel.FlxVirtualPad;
+import flixel.input.actions.FlxActionInputDigital.FlxActionInputDigitalIFlxInput;
+import flixel.input.FlxInput.FlxInputState;
+#end
 
 #if (haxe >= "4.0.0")
 enum abstract Action(String) to String from String
@@ -26,6 +33,18 @@ enum abstract Action(String) to String from String
 	var LEFT_R = "left-release";
 	var RIGHT_R = "right-release";
 	var DOWN_R = "down-release";
+	var NOTE_UP = "note-up";
+	var NOTE_LEFT = "note-left";
+	var NOTE_RIGHT = "note-right";
+	var NOTE_DOWN = "note-down";
+	var NOTE_UP_P = "note-up-press";
+	var NOTE_LEFT_P = "note-left-press";
+	var NOTE_RIGHT_P = "note-right-press";
+	var NOTE_DOWN_P = "note-down-press";
+	var NOTE_UP_R = "note-up-release";
+	var NOTE_LEFT_R = "note-left-release";
+	var NOTE_RIGHT_R = "note-right-release";
+	var NOTE_DOWN_R = "note-down-release";
 	var ACCEPT = "accept";
 	var BACK = "back";
 	var PAUSE = "pause";
@@ -48,6 +67,18 @@ abstract Action(String) to String from String
 	var LEFT_R = "left-release";
 	var RIGHT_R = "right-release";
 	var DOWN_R = "down-release";
+	var NOTE_UP = "note-up";
+	var NOTE_LEFT = "note-left";
+	var NOTE_RIGHT = "note-right";
+	var NOTE_DOWN = "note-down";
+	var NOTE_UP_P = "note-up-press";
+	var NOTE_LEFT_P = "note-left-press";
+	var NOTE_RIGHT_P = "note-right-press";
+	var NOTE_DOWN_P = "note-down-press";
+	var NOTE_UP_R = "note-up-release";
+	var NOTE_LEFT_R = "note-left-release";
+	var NOTE_RIGHT_R = "note-right-release";
+	var NOTE_DOWN_R = "note-down-release";
 	var ACCEPT = "accept";
 	var BACK = "back";
 	var PAUSE = "pause";
@@ -73,6 +104,10 @@ enum Control
 	LEFT;
 	RIGHT;
 	DOWN;
+	NOTE_UP;
+	NOTE_LEFT;
+	NOTE_RIGHT;
+	NOTE_DOWN;
 	RESET;
 	ACCEPT;
 	BACK;
@@ -111,6 +146,18 @@ class Controls extends FlxActionSet
 	var _pause = new FlxActionDigital(Action.PAUSE);
 	var _reset = new FlxActionDigital(Action.RESET);
 	var _cheat = new FlxActionDigital(Action.CHEAT);
+	var _noteUp = new FlxActionDigital(Action.NOTE_UP);
+	var _noteLeft = new FlxActionDigital(Action.NOTE_LEFT);
+	var _noteRight = new FlxActionDigital(Action.NOTE_RIGHT);
+	var _noteDown = new FlxActionDigital(Action.NOTE_DOWN);
+	var _noteUpP = new FlxActionDigital(Action.NOTE_UP_P);
+	var _noteLeftP = new FlxActionDigital(Action.NOTE_LEFT_P);
+	var _noteRightP = new FlxActionDigital(Action.NOTE_RIGHT_P);
+	var _noteDownP = new FlxActionDigital(Action.NOTE_DOWN_P);
+	var _noteUpR = new FlxActionDigital(Action.NOTE_UP_R);
+	var _noteLeftR = new FlxActionDigital(Action.NOTE_LEFT_R);
+	var _noteRightR = new FlxActionDigital(Action.NOTE_RIGHT_R);
+	var _noteDownR = new FlxActionDigital(Action.NOTE_DOWN_R);
 
 	#if (haxe >= "4.0.0")
 	var byName:Map<String, FlxActionDigital> = [];
@@ -206,6 +253,31 @@ class Controls extends FlxActionSet
 	inline function get_CHEAT()
 		return _cheat.check();
 
+	public var NOTE_UP(get, never):Bool;
+	inline function get_NOTE_UP() return _noteUp.check();
+	public var NOTE_LEFT(get, never):Bool;
+	inline function get_NOTE_LEFT() return _noteLeft.check();
+	public var NOTE_RIGHT(get, never):Bool;
+	inline function get_NOTE_RIGHT() return _noteRight.check();
+	public var NOTE_DOWN(get, never):Bool;
+	inline function get_NOTE_DOWN() return _noteDown.check();
+	public var NOTE_UP_P(get, never):Bool;
+	inline function get_NOTE_UP_P() return _noteUpP.check();
+	public var NOTE_LEFT_P(get, never):Bool;
+	inline function get_NOTE_LEFT_P() return _noteLeftP.check();
+	public var NOTE_RIGHT_P(get, never):Bool;
+	inline function get_NOTE_RIGHT_P() return _noteRightP.check();
+	public var NOTE_DOWN_P(get, never):Bool;
+	inline function get_NOTE_DOWN_P() return _noteDownP.check();
+	public var NOTE_UP_R(get, never):Bool;
+	inline function get_NOTE_UP_R() return _noteUpR.check();
+	public var NOTE_LEFT_R(get, never):Bool;
+	inline function get_NOTE_LEFT_R() return _noteLeftR.check();
+	public var NOTE_RIGHT_R(get, never):Bool;
+	inline function get_NOTE_RIGHT_R() return _noteRightR.check();
+	public var NOTE_DOWN_R(get, never):Bool;
+	inline function get_NOTE_DOWN_R() return _noteDownR.check();
+
 	#if (haxe >= "4.0.0")
 	public function new(name, scheme = None)
 	{
@@ -223,6 +295,18 @@ class Controls extends FlxActionSet
 		add(_leftR);
 		add(_rightR);
 		add(_downR);
+		add(_noteUp);
+		add(_noteLeft);
+		add(_noteRight);
+		add(_noteDown);
+		add(_noteUpP);
+		add(_noteLeftP);
+		add(_noteRightP);
+		add(_noteDownP);
+		add(_noteUpR);
+		add(_noteLeftR);
+		add(_noteRightR);
+		add(_noteDownR);
 		add(_accept);
 		add(_back);
 		add(_pause);
@@ -251,6 +335,18 @@ class Controls extends FlxActionSet
 		add(_leftR);
 		add(_rightR);
 		add(_downR);
+		add(_noteUp);
+		add(_noteLeft);
+		add(_noteRight);
+		add(_noteDown);
+		add(_noteUpP);
+		add(_noteLeftP);
+		add(_noteRightP);
+		add(_noteDownP);
+		add(_noteUpR);
+		add(_noteLeftR);
+		add(_noteRightR);
+		add(_noteDownR);
 		add(_accept);
 		add(_back);
 		add(_pause);
@@ -270,6 +366,157 @@ class Controls extends FlxActionSet
 	{
 		super.update();
 	}
+
+	#if mobileC
+	public var trackedInputsUI:Array<FlxActionInput> = [];
+	public var trackedInputsNOTES:Array<FlxActionInput> = [];
+
+	public function addButtonNOTES(action:FlxActionDigital, button:FlxButton, state:FlxInputState):Void
+	{
+		if (button == null)
+			return;
+
+		var input:FlxActionInputDigitalIFlxInput = new FlxActionInputDigitalIFlxInput(button, state);
+		trackedInputsNOTES.push(input);
+		action.add(input);
+	}
+
+	public function addButtonUI(action:FlxActionDigital, button:FlxButton, state:FlxInputState):Void
+	{
+		if (button == null)
+			return;
+
+		var input:FlxActionInputDigitalIFlxInput = new FlxActionInputDigitalIFlxInput(button, state);
+		trackedInputsUI.push(input);
+		action.add(input);
+	}
+
+	public function setHitBox(Hitbox:FlxHitbox):Void
+	{
+		if (Hitbox == null)
+			return;
+
+		inline forEachBound(Control.NOTE_LEFT, (action, state) -> addButtonNOTES(action, Hitbox.hints[0], state));
+		inline forEachBound(Control.NOTE_DOWN, (action, state) -> addButtonNOTES(action, Hitbox.hints[1], state));
+		inline forEachBound(Control.NOTE_UP, (action, state) -> addButtonNOTES(action, Hitbox.hints[2], state));
+		inline forEachBound(Control.NOTE_RIGHT, (action, state) -> addButtonNOTES(action, Hitbox.hints[3], state));
+	}
+
+	public function setVirtualPadUI(VirtualPad:FlxVirtualPad, DPad:FlxDPadMode, Action:FlxActionMode):Void
+	{
+		if (VirtualPad == null)
+			return;
+
+		switch (DPad)
+		{
+			case UP_DOWN:
+				inline forEachBound(Control.UP, (action, state) -> addButtonUI(action, VirtualPad.buttonUp, state));
+				inline forEachBound(Control.DOWN, (action, state) -> addButtonUI(action, VirtualPad.buttonDown, state));
+			case LEFT_RIGHT:
+				inline forEachBound(Control.LEFT, (action, state) -> addButtonUI(action, VirtualPad.buttonLeft, state));
+				inline forEachBound(Control.RIGHT, (action, state) -> addButtonUI(action, VirtualPad.buttonRight, state));
+			case UP_LEFT_RIGHT:
+				inline forEachBound(Control.UP, (action, state) -> addButtonUI(action, VirtualPad.buttonUp, state));
+				inline forEachBound(Control.LEFT, (action, state) -> addButtonUI(action, VirtualPad.buttonLeft, state));
+				inline forEachBound(Control.RIGHT, (action, state) -> addButtonUI(action, VirtualPad.buttonRight, state));
+			case LEFT_FULL | RIGHT_FULL:
+				inline forEachBound(Control.UP, (action, state) -> addButtonUI(action, VirtualPad.buttonUp, state));
+				inline forEachBound(Control.DOWN, (action, state) -> addButtonUI(action, VirtualPad.buttonDown, state));
+				inline forEachBound(Control.LEFT, (action, state) -> addButtonUI(action, VirtualPad.buttonLeft, state));
+				inline forEachBound(Control.RIGHT, (action, state) -> addButtonUI(action, VirtualPad.buttonRight, state));
+			case BOTH_FULL:
+				inline forEachBound(Control.UP, (action, state) -> addButtonUI(action, VirtualPad.buttonUp, state));
+				inline forEachBound(Control.DOWN, (action, state) -> addButtonUI(action, VirtualPad.buttonDown, state));
+				inline forEachBound(Control.LEFT, (action, state) -> addButtonUI(action, VirtualPad.buttonLeft, state));
+				inline forEachBound(Control.RIGHT, (action, state) -> addButtonUI(action, VirtualPad.buttonRight, state));
+				inline forEachBound(Control.UP, (action, state) -> addButtonUI(action, VirtualPad.buttonUp2, state));
+				inline forEachBound(Control.DOWN, (action, state) -> addButtonUI(action, VirtualPad.buttonDown2, state));
+				inline forEachBound(Control.LEFT, (action, state) -> addButtonUI(action, VirtualPad.buttonLeft2, state));
+				inline forEachBound(Control.RIGHT, (action, state) -> addButtonUI(action, VirtualPad.buttonRight2, state));
+			case NONE: // do nothing
+		}
+
+		switch (Action)
+		{
+			case A:
+				inline forEachBound(Control.ACCEPT, (action, state) -> addButtonUI(action, VirtualPad.buttonA, state));
+			case B:
+				inline forEachBound(Control.BACK, (action, state) -> addButtonUI(action, VirtualPad.buttonB, state));
+			case P:
+				inline forEachBound(Control.PAUSE, (action, state) -> addButtonUI(action, VirtualPad.buttonP, state));
+			case A_B | A_B_C | A_B_E | A_B_X_Y | A_B_C_X_Y | A_B_C_X_Y_Z | A_B_C_D_V_X_Y_Z:
+				inline forEachBound(Control.ACCEPT, (action, state) -> addButtonUI(action, VirtualPad.buttonA, state));
+				inline forEachBound(Control.BACK, (action, state) -> addButtonUI(action, VirtualPad.buttonB, state));
+			case NONE: // do nothing
+		}
+	}
+
+	public function setVirtualPadNOTES(VirtualPad:FlxVirtualPad, DPad:FlxDPadMode, Action:FlxActionMode):Void
+	{
+		if (VirtualPad == null)
+			return;
+
+		switch (DPad)
+		{
+			case UP_DOWN:
+				inline forEachBound(Control.NOTE_UP, (action, state) -> addButtonNOTES(action, VirtualPad.buttonUp, state));
+				inline forEachBound(Control.NOTE_DOWN, (action, state) -> addButtonNOTES(action, VirtualPad.buttonDown, state));
+			case LEFT_RIGHT:
+				inline forEachBound(Control.NOTE_LEFT, (action, state) -> addButtonNOTES(action, VirtualPad.buttonLeft, state));
+				inline forEachBound(Control.NOTE_RIGHT, (action, state) -> addButtonNOTES(action, VirtualPad.buttonRight, state));
+			case UP_LEFT_RIGHT:
+				inline forEachBound(Control.NOTE_UP, (action, state) -> addButtonNOTES(action, VirtualPad.buttonUp, state));
+				inline forEachBound(Control.NOTE_LEFT, (action, state) -> addButtonNOTES(action, VirtualPad.buttonLeft, state));
+				inline forEachBound(Control.NOTE_RIGHT, (action, state) -> addButtonNOTES(action, VirtualPad.buttonRight, state));
+			case LEFT_FULL | RIGHT_FULL:
+				inline forEachBound(Control.NOTE_UP, (action, state) -> addButtonNOTES(action, VirtualPad.buttonUp, state));
+				inline forEachBound(Control.NOTE_DOWN, (action, state) -> addButtonNOTES(action, VirtualPad.buttonDown, state));
+				inline forEachBound(Control.NOTE_LEFT, (action, state) -> addButtonNOTES(action, VirtualPad.buttonLeft, state));
+				inline forEachBound(Control.NOTE_RIGHT, (action, state) -> addButtonNOTES(action, VirtualPad.buttonRight, state));
+			case BOTH_FULL:
+				inline forEachBound(Control.NOTE_UP, (action, state) -> addButtonNOTES(action, VirtualPad.buttonUp, state));
+				inline forEachBound(Control.NOTE_DOWN, (action, state) -> addButtonNOTES(action, VirtualPad.buttonDown, state));
+				inline forEachBound(Control.NOTE_LEFT, (action, state) -> addButtonNOTES(action, VirtualPad.buttonLeft, state));
+				inline forEachBound(Control.NOTE_RIGHT, (action, state) -> addButtonNOTES(action, VirtualPad.buttonRight, state));
+				inline forEachBound(Control.NOTE_UP, (action, state) -> addButtonNOTES(action, VirtualPad.buttonUp2, state));
+				inline forEachBound(Control.NOTE_DOWN, (action, state) -> addButtonNOTES(action, VirtualPad.buttonDown2, state));
+				inline forEachBound(Control.NOTE_LEFT, (action, state) -> addButtonNOTES(action, VirtualPad.buttonLeft2, state));
+				inline forEachBound(Control.NOTE_RIGHT, (action, state) -> addButtonNOTES(action, VirtualPad.buttonRight2, state));
+			case NONE: // do nothing
+		}
+
+		switch (Action)
+		{
+			case A:
+				inline forEachBound(Control.ACCEPT, (action, state) -> addButtonNOTES(action, VirtualPad.buttonA, state));
+			case B:
+				inline forEachBound(Control.BACK, (action, state) -> addButtonNOTES(action, VirtualPad.buttonB, state));
+			case P:
+				inline forEachBound(Control.PAUSE, (action, state) -> addButtonNOTES(action, VirtualPad.buttonP, state));
+			case A_B | A_B_C | A_B_E | A_B_X_Y | A_B_C_X_Y | A_B_C_X_Y_Z | A_B_C_D_V_X_Y_Z:
+				inline forEachBound(Control.ACCEPT, (action, state) -> addButtonNOTES(action, VirtualPad.buttonA, state));
+				inline forEachBound(Control.BACK, (action, state) -> addButtonNOTES(action, VirtualPad.buttonB, state));
+			case NONE: // do nothing
+		}
+	}
+
+	public function removeVirtualControlsInput(Tinputs:Array<FlxActionInput>):Void
+	{
+		for (action in this.digitalActions)
+		{
+			var i = action.inputs.length;
+			while (i-- > 0)
+			{
+				var x = Tinputs.length;
+				while (x-- > 0)
+				{
+					if (Tinputs[x] == action.inputs[i])
+						action.remove(action.inputs[i]);
+				}
+			}
+		}
+	}
+	#end
 
 	// inline
 	public function checkByName(name:Action):Bool
@@ -305,6 +552,10 @@ class Controls extends FlxActionSet
 			case DOWN: _down;
 			case LEFT: _left;
 			case RIGHT: _right;
+			case NOTE_UP: _noteUp;
+			case NOTE_DOWN: _noteDown;
+			case NOTE_LEFT: _noteLeft;
+			case NOTE_RIGHT: _noteRight;
 			case ACCEPT: _accept;
 			case BACK: _back;
 			case PAUSE: _pause;
@@ -345,6 +596,22 @@ class Controls extends FlxActionSet
 				func(_down, PRESSED);
 				func(_downP, JUST_PRESSED);
 				func(_downR, JUST_RELEASED);
+			case NOTE_UP:
+				func(_noteUp, PRESSED);
+				func(_noteUpP, JUST_PRESSED);
+				func(_noteUpR, JUST_RELEASED);
+			case NOTE_LEFT:
+				func(_noteLeft, PRESSED);
+				func(_noteLeftP, JUST_PRESSED);
+				func(_noteLeftR, JUST_RELEASED);
+			case NOTE_RIGHT:
+				func(_noteRight, PRESSED);
+				func(_noteRightP, JUST_PRESSED);
+				func(_noteRightR, JUST_RELEASED);
+			case NOTE_DOWN:
+				func(_noteDown, PRESSED);
+				func(_noteDownP, JUST_PRESSED);
+				func(_noteDownR, JUST_RELEASED);
 			case ACCEPT:
 				func(_accept, JUST_PRESSED);
 			case BACK:
@@ -502,6 +769,10 @@ class Controls extends FlxActionSet
 				inline bindKeys(Control.DOWN, [F, FlxKey.DOWN]);
 				inline bindKeys(Control.LEFT, [D, FlxKey.LEFT]);
 				inline bindKeys(Control.RIGHT, [K, FlxKey.RIGHT]);
+				inline bindKeys(Control.NOTE_UP, [J, FlxKey.UP]);
+				inline bindKeys(Control.NOTE_DOWN, [F, FlxKey.DOWN]);
+				inline bindKeys(Control.NOTE_LEFT, [D, FlxKey.LEFT]);
+				inline bindKeys(Control.NOTE_RIGHT, [K, FlxKey.RIGHT]);
 				inline bindKeys(Control.ACCEPT, [Z, SPACE, ENTER]);
 				inline bindKeys(Control.BACK, [BACKSPACE, ESCAPE]);
 				inline bindKeys(Control.PAUSE, [P, ENTER, ESCAPE]);
@@ -511,6 +782,10 @@ class Controls extends FlxActionSet
 				inline bindKeys(Control.DOWN, [S, FlxKey.DOWN]);
 				inline bindKeys(Control.LEFT, [A, FlxKey.LEFT]);
 				inline bindKeys(Control.RIGHT, [D, FlxKey.RIGHT]);
+				inline bindKeys(Control.NOTE_UP, [W, FlxKey.UP]);
+				inline bindKeys(Control.NOTE_DOWN, [S, FlxKey.DOWN]);
+				inline bindKeys(Control.NOTE_LEFT, [A, FlxKey.LEFT]);
+				inline bindKeys(Control.NOTE_RIGHT, [D, FlxKey.RIGHT]);
 				inline bindKeys(Control.ACCEPT, [G, Z, SPACE, ENTER]);
 				inline bindKeys(Control.BACK, [BACKSPACE, ESCAPE]);
 				inline bindKeys(Control.RESET, [R]);
@@ -519,6 +794,10 @@ class Controls extends FlxActionSet
 				inline bindKeys(Control.DOWN, [FlxKey.DOWN]);
 				inline bindKeys(Control.LEFT, [FlxKey.LEFT]);
 				inline bindKeys(Control.RIGHT, [FlxKey.RIGHT]);
+				inline bindKeys(Control.NOTE_UP, [FlxKey.UP]);
+				inline bindKeys(Control.NOTE_DOWN, [FlxKey.DOWN]);
+				inline bindKeys(Control.NOTE_LEFT, [FlxKey.LEFT]);
+				inline bindKeys(Control.NOTE_RIGHT, [FlxKey.RIGHT]);
 				inline bindKeys(Control.ACCEPT, [O]);
 				inline bindKeys(Control.BACK, [P]);
 				inline bindKeys(Control.PAUSE, [ENTER]);
@@ -534,6 +813,10 @@ class Controls extends FlxActionSet
 				bindKeys(Control.DOWN, [S, FlxKey.DOWN]);
 				bindKeys(Control.LEFT, [A, FlxKey.LEFT]);
 				bindKeys(Control.RIGHT, [D, FlxKey.RIGHT]);
+				bindKeys(Control.NOTE_UP, [W, FlxKey.UP]);
+				bindKeys(Control.NOTE_DOWN, [S, FlxKey.DOWN]);
+				bindKeys(Control.NOTE_LEFT, [A, FlxKey.LEFT]);
+				bindKeys(Control.NOTE_RIGHT, [D, FlxKey.RIGHT]);
 				bindKeys(Control.ACCEPT, [Z, SPACE, ENTER]);
 				bindKeys(Control.BACK, [BACKSPACE, ESCAPE]);
 				bindKeys(Control.PAUSE, [P, ENTER, ESCAPE]);
@@ -543,6 +826,10 @@ class Controls extends FlxActionSet
 				bindKeys(Control.DOWN, [S]);
 				bindKeys(Control.LEFT, [A]);
 				bindKeys(Control.RIGHT, [D]);
+				bindKeys(Control.NOTE_UP, [W]);
+				bindKeys(Control.NOTE_DOWN, [S]);
+				bindKeys(Control.NOTE_LEFT, [A]);
+				bindKeys(Control.NOTE_RIGHT, [D]);
 				bindKeys(Control.ACCEPT, [G, Z]);
 				bindKeys(Control.BACK, [H, X]);
 				bindKeys(Control.PAUSE, [ONE]);
@@ -552,6 +839,10 @@ class Controls extends FlxActionSet
 				bindKeys(Control.DOWN, [FlxKey.DOWN]);
 				bindKeys(Control.LEFT, [FlxKey.LEFT]);
 				bindKeys(Control.RIGHT, [FlxKey.RIGHT]);
+				bindKeys(Control.NOTE_UP, [FlxKey.UP]);
+				bindKeys(Control.NOTE_DOWN, [FlxKey.DOWN]);
+				bindKeys(Control.NOTE_LEFT, [FlxKey.LEFT]);
+				bindKeys(Control.NOTE_RIGHT, [FlxKey.RIGHT]);
 				bindKeys(Control.ACCEPT, [O]);
 				bindKeys(Control.BACK, [P]);
 				bindKeys(Control.PAUSE, [ENTER]);

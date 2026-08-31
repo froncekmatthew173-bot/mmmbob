@@ -136,9 +136,11 @@ class FreeplayState extends MusicBeatState
 			// scoreText.textField.htmlText = md;
 
 			trace(md);
-		 */
-
-		super.create();
+		 */		#if mobileC
+		addVirtualPad(LEFT_FULL, A_B);
+		addVirtualPadCamera();
+		#end
+super.create();
 	}
 
 	public function addSong(songName:String, weekNum:Int, songCharacter:String)

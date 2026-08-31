@@ -1,0 +1,102 @@
+name: Desktop Build
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }} - ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: windows
+            artifact: windowsBuild
+          - os: ubuntu-latest
+            target: linux
+            artifact: linuxBuild
+          - os: macos-latest
+            target: mac
+            artifact: macBuild
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Haxe
+        uses: krdlab/setup-haxe@v1
+        with:
+          haxe-version: 4.3.7
+
+      - name: Restore haxelib cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/haxelib
+            ${{ github.workspace }}/.haxelib
+          key: ${{ runner.os }}-haxelib-${{ hashFiles('Project.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-haxelib-
+
+      - name: Setup haxelib
+        run: |
+          haxelib setup ~/haxelib
+          haxelib --version
+          lime --version || echo "lime not yet installed"
+
+      - name: Install system dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libvlc-dev libvlccore-dev libsdl2-dev
+
+      - name: Install Haxelibs
+        run: |
+          haxelib install lime 8.1.0 --quiet || haxelib install lime --quiet
+          haxelib install openfl --quiet
+          haxelib install flixel --quiet
+          haxelib run lime setup flixel --quiet || true
+          haxelib run lime setup --quiet || true
+          haxelib install flixel-tools --quiet || true
+          haxelib install flixel-addons --quiet
+          haxelib install flixel-ui --quiet
+          haxelib install hscript --quiet
+          haxelib install actuate --quiet
+          haxelib install newgrounds --quiet
+          haxelib git polymod https://github.com/larsiusprime/polymod.git --quiet || haxelib install polymod --quiet
+          haxelib git faxe https://github.com/uhrobots/faxe --quiet || true
+          haxelib git discord_rpc https://github.com/Aidan63/linc_discord-rpc --quiet || true
+          haxelib git extension-webm https://github.com/KadeDev/extension-webm --quiet || haxelib install extension-webm --quiet || true
+          haxelib list
+
+      - name: Build ${{ matrix.target }}
+        run: haxelib run lime build ${{ matrix.target }} -release
+
+      - name: Upload Artifact (Windows)
+        if: matrix.target == 'windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: export/release/windows/bin
+          if-no-files-found: warn
+
+      - name: Upload Artifact (Linux)
+        if: matrix.target == 'linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: export/release/linux/bin
+          if-no-files-found: warn
+
+      - name: Upload Artifact (macOS)
+        if: matrix.target == 'mac'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: export/release/macos/bin
+          if-no-files-found: warn

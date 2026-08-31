@@ -138,6 +138,10 @@ class MainMenuState extends MusicBeatState
 
 		changeItem();
 
+		#if mobileC
+		addVirtualPad(LEFT_FULL, A_B);
+		addVirtualPadCamera();
+		#end
 		super.create();
 	}
 

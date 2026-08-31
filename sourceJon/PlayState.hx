@@ -180,6 +180,7 @@ class PlayState extends MusicBeatState
 	var songScoreDef:Int = 0;
 	var scoreTxt:FlxText;
 	var replayTxt:FlxText;
+	var botplayTxt:FlxText;
 
 	public static var campaignScore:Int = 0;
 
@@ -1094,6 +1095,14 @@ class PlayState extends MusicBeatState
 				add(replayTxt);
 			}
 
+		botplayTxt = new FlxText(healthBarBG.x + healthBarBG.width / 2 - 75, healthBarBG.y + (FlxG.save.data.downscroll ? 100 : -100), 0, "BOTPLAY", 20);
+		botplayTxt.setFormat(Paths.font("vcr.ttf"), 42, FlxColor.WHITE, RIGHT, FlxTextBorderStyle.OUTLINE,FlxColor.BLACK);
+		botplayTxt.scrollFactor.set();
+		if (FlxG.save.data.botplay)
+			{
+				add(botplayTxt);
+			}
+
 		iconP1 = new HealthIcon(SONG.player1, true);
 		iconP1.y = healthBar.y - (iconP1.height / 2);
 		add(iconP1);
@@ -1118,6 +1127,8 @@ class PlayState extends MusicBeatState
 		kadeEngineWatermark.cameras = [camHUD];
 		if (loadRep)
 			replayTxt.cameras = [camHUD];
+		if (FlxG.save.data.botplay)
+			botplayTxt.cameras = [camHUD];
 		// if (SONG.song == 'South')
 		// FlxG.camera.alpha = 0.7;
 		// UI_camera.zoom = 1;
@@ -1221,12 +1232,20 @@ class PlayState extends MusicBeatState
 
 		if (!loadRep)
 			rep = new Replay("na");
+
+		if (FlxG.save.data.botplay)
+			SONG.validScore = false;
 			
 		switch (curStage)
 		{
 			case 'hellstage':
 				add(bobmadshake);
 		}
+
+		#if mobileC
+		addMobileControls();
+		mobileControls.visible = true;
+		#end
 
 		super.create();
 	}
@@ -2612,7 +2631,11 @@ class PlayState extends MusicBeatState
 					}*/
 					if ((daNote.y < -daNote.height && !FlxG.save.data.downscroll || daNote.y >= strumLine.y + 106 && FlxG.save.data.downscroll) && daNote.mustPress)
 					{
-						if (daNote.isSustainNote && daNote.wasGoodHit)
+						if (FlxG.save.data.botplay && !daNote.warning && !daNote.mustHitNotes)
+						{
+							// botplay - ignore misses, just remove note without penalty
+						}
+						else if (daNote.isSustainNote && daNote.wasGoodHit)
 						{
 							daNote.kill();
 							notes.remove(daNote, true);
@@ -3055,7 +3078,64 @@ class PlayState extends MusicBeatState
 
 	private function keyShit():Void
 	{
-		// HOLDING
+		if (FlxG.save.data.botplay)
+		{
+			if (generatedMusic)
+			{
+				notes.forEachAlive(function(daNote:Note)
+				{
+					if (daNote.canBeHit && daNote.mustPress && !daNote.warning && !daNote.mustHitNotes && daNote.strumTime <= Conductor.songPosition && !daNote.tooLate && !daNote.wasGoodHit)
+					{
+						goodNoteHit(daNote);
+					}
+					// sustain hold - also auto-hit when overlapping
+					if (daNote.isSustainNote && daNote.canBeHit && daNote.mustPress && !daNote.warning && !daNote.mustHitNotes && daNote.strumTime <= Conductor.songPosition && !daNote.wasGoodHit)
+					{
+						goodNoteHit(daNote);
+					}
+				});
+			}
+
+			if (boyfriend.holdTimer > Conductor.stepCrochet * 4 * 0.001 && boyfriend.animation.curAnim.name.startsWith('sing') && !boyfriend.animation.curAnim.name.endsWith('miss'))
+			{
+				boyfriend.playAnim('idle');
+			}
+
+			playerStrums.forEach(function(spr:FlxSprite)
+			{
+				if (spr.animation.curAnim.name == 'confirm' && spr.animation.curAnim.finished)
+				{
+					spr.animation.play('static');
+				}
+				if (spr.animation.curAnim.name == 'confirm' && !curStage.startsWith('school'))
+				{
+					spr.centerOffsets();
+					spr.offset.x -= 13;
+					spr.offset.y -= 13;
+				}
+				else
+					spr.centerOffsets();
+			});
+
+			return;
+		}
+
+		#if mobileC
+		var up = controls.UP || controls.NOTE_UP;
+		var right = controls.RIGHT || controls.NOTE_RIGHT;
+		var down = controls.DOWN || controls.NOTE_DOWN;
+		var left = controls.LEFT || controls.NOTE_LEFT;
+
+		var upP = controls.UP_P || controls.NOTE_UP_P;
+		var rightP = controls.RIGHT_P || controls.NOTE_RIGHT_P;
+		var downP = controls.DOWN_P || controls.NOTE_DOWN_P;
+		var leftP = controls.LEFT_P || controls.NOTE_LEFT_P;
+
+		var upR = controls.UP_R || controls.NOTE_UP_R;
+		var rightR = controls.RIGHT_R || controls.NOTE_RIGHT_R;
+		var downR = controls.DOWN_R || controls.NOTE_DOWN_R;
+		var leftR = controls.LEFT_R || controls.NOTE_LEFT_R;
+		#else
 		var up = controls.UP;
 		var right = controls.RIGHT;
 		var down = controls.DOWN;
@@ -3070,6 +3150,7 @@ class PlayState extends MusicBeatState
 		var rightR = controls.RIGHT_R;
 		var downR = controls.DOWN_R;
 		var leftR = controls.LEFT_R;
+		#end
 
 		if (loadRep) // replay code
 		{

@@ -249,9 +249,11 @@ class StoryMenuState extends MusicBeatState
 		choose.scale.x = 0.85;
 		choose.scale.y = 0.85;
 		choose.screenCenter(X);
-		add(choose);
-
-		super.create();
+		add(choose);		#if mobileC
+		addVirtualPad(LEFT_FULL, A_B);
+		addVirtualPadCamera();
+		#end
+super.create();
 	}
 
 	override function update(elapsed:Float)
