@@ -1,4 +1,7 @@
-name: Mobile Build (Android & iOS)
+name: Mobile Build
+env:
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+ (Android & iOS)
 
 on:
   push:
@@ -96,7 +99,7 @@ jobs:
 
   buildIOS:
     name: Build iOS
-    runs-on: macos-latest
+    runs-on: macos-13
     steps:
       - name: Checkout
         uses: actions/checkout@v4

@@ -1,4 +1,6 @@
 name: iOS Build
+env:
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
 
 on:
   push:
@@ -9,7 +11,7 @@ on:
 jobs:
   buildIOS:
     name: Build iOS
-    runs-on: macos-latest
+    runs-on: macos-13
     steps:
       - name: Checkout
         uses: actions/checkout@v4

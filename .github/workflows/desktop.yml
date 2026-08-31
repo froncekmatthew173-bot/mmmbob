@@ -1,5 +1,8 @@
 name: Desktop Build
 
+env:
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+
 on:
   push:
     branches: [ main, master ]
@@ -20,7 +23,7 @@ jobs:
           - os: ubuntu-latest
             target: linux
             artifact: linuxBuild
-          - os: macos-latest
+          - os: macos-13
             target: mac
             artifact: macBuild
 
