@@ -148,7 +148,7 @@ jobs:
           ls -l /c/tools/haxe/ 2>/dev/null | head -n 20 || ls -l /usr/local/bin/haxelib* 2>/dev/null | head -n 20 || true
           haxelib setup ~/haxelib || haxelib setup $HOME/haxelib || true
           haxelib version || true
-          haxelib run lime --version 2>&1 || arch -x86_64 haxelib run lime --version 2>&1 || echo "lime not yet installed"
+          haxelib run lime --version 2>&1 || echo "lime not yet installed (will try to install)"
 
       - name: Install system dependencies (Linux)
         if: matrix.os == 'ubuntu-latest'
@@ -160,10 +160,15 @@ jobs:
         shell: bash
         run: |
           haxelib install lime 8.2.2 --quiet || haxelib install lime --quiet
+          haxelib set lime 8.2.2 2>/dev/null || true
+          # Verify lime arch is arm64 compatible
+          haxelib list | grep -i lime || true
+          ls -l ~/haxelib/lime/8.2.2/ndll/Mac* 2>/dev/null | head -n 20 || ls -l ~/haxelib/lime/*/ndll/Mac* 2>/dev/null | head -n 20 || true
+          file ~/haxelib/lime/8.2.2/ndll/Mac64/lime.ndll 2>/dev/null | head -n 5 || file ~/haxelib/lime/*/ndll/Mac64/lime.ndll 2>/dev/null | head -n 5 || true
           haxelib install openfl --quiet
           haxelib install flixel --quiet
-          haxelib run lime setup flixel --quiet 2>&1 || arch -x86_64 haxelib run lime setup flixel --quiet 2>&1 || true
-          haxelib run lime setup --quiet 2>&1 || arch -x86_64 haxelib run lime setup --quiet 2>&1 || true
+          haxelib run lime setup flixel --quiet 2>&1 || true
+          haxelib run lime setup --quiet 2>&1 || true
           haxelib install flixel-tools --quiet || true
           haxelib install flixel-addons --quiet
           haxelib install flixel-ui --quiet
@@ -182,14 +187,14 @@ jobs:
           # Rebuild ndll if missing - extension-webm is desktop only
           if [ -d "$HOME/haxelib/extension-webm" ]; then
             echo "Attempting to rebuild extension-webm for ${{ matrix.target }}"
-            haxelib run lime rebuild extension-webm ${{ matrix.target }} 2>&1 || arch -x86_64 haxelib run lime rebuild extension-webm ${{ matrix.target }} 2>&1 || echo "rebuild skipped/failed, continuing"
+            haxelib run lime rebuild extension-webm ${{ matrix.target }} 2>&1 || echo "rebuild skipped/failed, continuing"
             ls -R ~/haxelib/extension-webm 2>/dev/null | head -n 100 || true
           else
             echo "extension-webm not installed, skipping rebuild"
           fi
 
       - name: Build ${{ matrix.target }}
-        run: haxelib run lime build ${{ matrix.target }} -release 2>&1 || arch -x86_64 haxelib run lime build ${{ matrix.target }} -release
+        run: haxelib run lime build ${{ matrix.target }} -release
 
       - name: Upload Artifact (Windows)
         if: matrix.target == 'windows'

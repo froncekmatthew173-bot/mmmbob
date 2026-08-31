@@ -131,7 +131,7 @@ jobs:
           ls -l /c/tools/haxe/ 2>/dev/null | head -n 20 || ls -l /usr/local/bin/haxelib* 2>/dev/null | head -n 20 || true
           haxelib setup ~/haxelib || haxelib setup $HOME/haxelib || true
           haxelib version || true
-          haxelib run lime --version 2>&1 || arch -x86_64 haxelib run lime --version 2>&1 || echo "lime not yet installed"
+          haxelib run lime --version 2>&1 || echo "lime not yet installed (will try to install)"
       - name: Select Xcode
         run: |
           sudo xcode-select -s /Applications/Xcode.app/Contents/Developer || sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer || true
@@ -169,10 +169,15 @@ jobs:
         shell: bash
         run: |
           haxelib install lime 8.2.2 --quiet || haxelib install lime --quiet
+          haxelib set lime 8.2.2 2>/dev/null || true
+          # Verify lime arch is arm64 compatible
+          haxelib list | grep -i lime || true
+          ls -l ~/haxelib/lime/8.2.2/ndll/Mac* 2>/dev/null | head -n 20 || ls -l ~/haxelib/lime/*/ndll/Mac* 2>/dev/null | head -n 20 || true
+          file ~/haxelib/lime/8.2.2/ndll/Mac64/lime.ndll 2>/dev/null | head -n 5 || file ~/haxelib/lime/*/ndll/Mac64/lime.ndll 2>/dev/null | head -n 5 || true
           haxelib install openfl --quiet
           haxelib install flixel --quiet
-          haxelib run lime setup flixel --quiet 2>&1 || arch -x86_64 haxelib run lime setup flixel --quiet 2>&1 || true
-          haxelib run lime setup --quiet 2>&1 || arch -x86_64 haxelib run lime setup --quiet 2>&1 || true
+          haxelib run lime setup flixel --quiet 2>&1 || true
+          haxelib run lime setup --quiet 2>&1 || true
           haxelib install flixel-tools --quiet || true
           haxelib install flixel-addons --quiet
           haxelib install flixel-ui --quiet
@@ -186,20 +191,26 @@ jobs:
           haxelib list
 
       - name: Setup lime for iOS
-        run: haxelib run lime setup ios --quiet 2>&1 || arch -x86_64 haxelib run lime setup ios --quiet 2>&1 || true
+        run: haxelib run lime setup ios --quiet 2>&1 || true
 
       - name: Build iOS Debug (Simulator - no signing required)
-        run: haxelib run lime build ios -debug -simulator 2>&1 || arch -x86_64 haxelib run lime build ios -debug -simulator
+        shell: bash
+        run: |
+          # Clean previous build to avoid Xcode internal inconsistency error
+          rm -rf export/ios 2>/dev/null || true
+          haxelib run lime build ios -debug -simulator
+          # Also try simulator via xcodebuild directly if lime fails
+          # xcodebuild -project export/ios/BOB.xcodeproj -scheme BOB -sdk iphonesimulator -configuration Debug build || true
 
       - name: Build iOS Release (requires signing)
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         shell: bash
         run: |
           if [ -n "${{ secrets.IOS_CERTIFICATE }}" ]; then
-            haxelib run lime build ios -final 2>&1 || arch -x86_64 haxelib run lime build ios -final 2>&1 || true
+            haxelib run lime build ios -final 2>&1 || true
           else
             echo "No signing certificate provided - skipping signed release build (simulator build already done)"
-            haxelib run lime build ios -final 2>&1 || arch -x86_64 haxelib run lime build ios -final 2>&1 || true
+            haxelib run lime build ios -final 2>&1 || true
           fi
 
       - name: Upload iOS Simulator Build
