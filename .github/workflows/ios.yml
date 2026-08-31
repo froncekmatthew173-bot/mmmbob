@@ -19,42 +19,37 @@ jobs:
           HAXE_VERSION=4.3.7
           echo "Installing Haxe $HAXE_VERSION for ${{ runner.os }} $(uname -m 2>/dev/null || echo unknown)"
           if [[ "${{ runner.os }}" == "Windows" ]]; then
-            echo "Installing Haxe on Windows $HAXE_VERSION"
-            # Try direct download first (more reliable than choco version pin)
-            HAXE_URL="https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-win64.zip"
-            rm -rf /tmp/haxe.zip /tmp/haxe-extract
-            mkdir -p /tmp/haxe-extract
-            if wget -q $HAXE_URL -O /tmp/haxe.zip 2>/dev/null || curl -L -o /tmp/haxe.zip $HAXE_URL 2>/dev/null; then
-              echo "Downloaded Haxe win64 zip"
-              unzip -q /tmp/haxe.zip -d /tmp/haxe-extract 2>/dev/null || 7z x /tmp/haxe.zip -o/tmp/haxe-extract -y 2>/dev/null || powershell -Command "Expand-Archive -Force /tmp/haxe.zip /tmp/haxe-extract" 2>/dev/null || true
-              mkdir -p /c/tools/haxe
-              # Find haxe.exe
-              HAXE_EXE=$(find /tmp/haxe-extract -name "haxe.exe" 2>/dev/null | head -n 1)
-              if [ -n "$HAXE_EXE" ]; then
-                HAXE_DIR=$(dirname "$HAXE_EXE")
-                cp -r "$HAXE_DIR"/* /c/tools/haxe/ 2>/dev/null || true
-                cp -r /tmp/haxe-extract/* /c/tools/haxe/ 2>/dev/null || true
-              else
-                cp -r /tmp/haxe-extract/* /c/tools/haxe/ 2>/dev/null || true
+            echo "Installing Haxe on Windows $HAXE_VERSION via Chocolatey (handles neko std.ndll correctly)"
+            # Prefer choco which correctly installs haxe + neko + std.ndll together
+            choco install haxe -y --allow-downgrade 2>/dev/null || choco install haxe -y 2>/dev/null || true
+            choco install neko -y 2>/dev/null || true
+            echo "C:/ProgramData/chocolatey/bin" >> $GITHUB_PATH
+            echo "C:/tools/haxe" >> $GITHUB_PATH
+            echo "C:/Program Files/Neko" >> $GITHUB_PATH
+            export PATH="$PATH:/c/ProgramData/chocolatey/bin:/c/tools/haxe:/c/Program\ Files/Neko"
+            # Verify
+            ls -l /c/tools/haxe/haxe.exe 2>/dev/null || ls -l "C:/ProgramData/chocolatey/bin/haxe.exe" 2>/dev/null | head -n 20 || true
+            which haxe 2>/dev/null || where haxe 2>/dev/null || find /c/tools -name "haxe.exe" 2>/dev/null | head -n 5 || true
+            # Fallback to direct zip only if choco failed
+            if ! command -v haxelib >/dev/null 2>&1; then
+              echo "choco haxe not found, trying direct download fallback"
+              HAXE_URL="https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-win64.zip"
+              rm -rf /tmp/haxe.zip /tmp/haxe-extract
+              mkdir -p /tmp/haxe-extract
+              if wget -q $HAXE_URL -O /tmp/haxe.zip 2>/dev/null || curl -L -o /tmp/haxe.zip $HAXE_URL 2>/dev/null; then
+                unzip -q /tmp/haxe.zip -d /tmp/haxe-extract 2>/dev/null || 7z x /tmp/haxe.zip -o/tmp/haxe-extract -y 2>/dev/null || powershell -Command "Expand-Archive -Force /tmp/haxe.zip /tmp/haxe-extract" 2>/dev/null || true
+                mkdir -p /c/tools/haxe
+                HAXE_EXE=$(find /tmp/haxe-extract -name "haxe.exe" 2>/dev/null | head -n 1)
+                if [ -n "$HAXE_EXE" ]; then
+                  HAXE_DIR=$(dirname "$HAXE_EXE")
+                  cp -r "$HAXE_DIR"/* /c/tools/haxe/ 2>/dev/null || true
+                else
+                  cp -r /tmp/haxe-extract/* /c/tools/haxe/ 2>/dev/null || true
+                fi
+                echo "/c/tools/haxe" >> $GITHUB_PATH
+                echo "C:/tools/haxe" >> $GITHUB_PATH
+                export PATH="$PATH:/c/tools/haxe"
               fi
-              echo "/c/tools/haxe" >> $GITHUB_PATH
-              echo "C:/tools/haxe" >> $GITHUB_PATH
-              export PATH="$PATH:/c/tools/haxe"
-              ls -l /c/tools/haxe/haxe.exe 2>/dev/null || ls -l /c/tools/haxe/* 2>/dev/null | head -n 20 || true
-            fi
-            # Fallback to choco if still not found
-            if ! command -v haxe >/dev/null 2>&1; then
-              echo "Falling back to choco"
-              choco install haxe -y --allow-downgrade 2>/dev/null || choco install haxe -y 2>/dev/null || true
-              echo "C:/ProgramData/chocolatey/bin" >> $GITHUB_PATH
-              echo "C:/tools/haxe" >> $GITHUB_PATH
-              export PATH="$PATH:/c/ProgramData/chocolatey/bin:/c/tools/haxe"
-            fi
-            # Ensure neko on Windows
-            # haxe windows bundle includes neko, but install via choco as fallback
-            if ! command -v neko >/dev/null 2>&1; then
-              choco install neko -y 2>/dev/null || true
-              echo "C:/ProgramData/chocolatey/bin" >> $GITHUB_PATH
             fi
           elif [[ "${{ runner.os }}" == "macOS" ]]; then
             echo "Installing Haxe via Homebrew (handles arm64/x64 + libneko correctly)"
@@ -66,7 +61,8 @@ jobs:
             brew install neko 2>/dev/null || brew upgrade neko 2>/dev/null || true
             brew link --overwrite haxe 2>/dev/null || true
             brew link --overwrite neko 2>/dev/null || true
-            # Ensure brew paths in PATH
+            # Ensure brew paths in PATH for this step and next steps
+            export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
             echo "/opt/homebrew/bin" >> $GITHUB_PATH
             echo "/usr/local/bin" >> $GITHUB_PATH
             echo "/opt/homebrew/lib" >> $GITHUB_LD_LIBRARY_PATH 2>/dev/null || true
@@ -118,9 +114,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/haxelib
-          key: macos-haxelib-ios-${{ hashFiles('Project.xml') }}
+          key: macos-haxelib-ios-lime822-${{ hashFiles('Project.xml') }}
           restore-keys: |
-            macos-haxelib-ios-
+            macos-haxelib-ios-lime822-
 
       - name: Setup haxelib
         shell: bash
@@ -135,7 +131,7 @@ jobs:
           ls -l /c/tools/haxe/ 2>/dev/null | head -n 20 || ls -l /usr/local/bin/haxelib* 2>/dev/null | head -n 20 || true
           haxelib setup ~/haxelib || haxelib setup $HOME/haxelib || true
           haxelib version || true
-          haxelib run lime --version || echo "lime not yet installed"
+          haxelib run lime --version 2>&1 || arch -x86_64 haxelib run lime --version 2>&1 || echo "lime not yet installed"
       - name: Select Xcode
         run: |
           sudo xcode-select -s /Applications/Xcode.app/Contents/Developer || sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer || true
@@ -172,11 +168,11 @@ jobs:
       - name: Install Haxelibs
         shell: bash
         run: |
-          haxelib install lime 8.1.0 --quiet || haxelib install lime --quiet
+          haxelib install lime 8.2.2 --quiet || haxelib install lime --quiet
           haxelib install openfl --quiet
           haxelib install flixel --quiet
-          haxelib run lime setup flixel --quiet || true
-          haxelib run lime setup --quiet || true
+          haxelib run lime setup flixel --quiet 2>&1 || arch -x86_64 haxelib run lime setup flixel --quiet 2>&1 || true
+          haxelib run lime setup --quiet 2>&1 || arch -x86_64 haxelib run lime setup --quiet 2>&1 || true
           haxelib install flixel-tools --quiet || true
           haxelib install flixel-addons --quiet
           haxelib install flixel-ui --quiet
@@ -190,20 +186,20 @@ jobs:
           haxelib list
 
       - name: Setup lime for iOS
-        run: haxelib run lime setup ios --quiet || true
+        run: haxelib run lime setup ios --quiet 2>&1 || arch -x86_64 haxelib run lime setup ios --quiet 2>&1 || true
 
       - name: Build iOS Debug (Simulator - no signing required)
-        run: haxelib run lime build ios -debug -simulator
+        run: haxelib run lime build ios -debug -simulator 2>&1 || arch -x86_64 haxelib run lime build ios -debug -simulator
 
       - name: Build iOS Release (requires signing)
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         shell: bash
         run: |
           if [ -n "${{ secrets.IOS_CERTIFICATE }}" ]; then
-            haxelib run lime build ios -final || haxelib run lime build ios -release || true
+            haxelib run lime build ios -final 2>&1 || arch -x86_64 haxelib run lime build ios -final 2>&1 || true
           else
             echo "No signing certificate provided - skipping signed release build (simulator build already done)"
-            haxelib run lime build ios -final || true
+            haxelib run lime build ios -final 2>&1 || arch -x86_64 haxelib run lime build ios -final 2>&1 || true
           fi
 
       - name: Upload iOS Simulator Build
