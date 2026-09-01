@@ -78,7 +78,7 @@ jobs:
       - name: Accept Android SDK licenses
         if: matrix.target == 'android'
         shell: bash
-        run: yes | sdkmanager --licenses
+        run: yes | sdkmanager --licenses 2>&1 || true
 
       - name: Set up haxelib repository
         shell: pwsh
