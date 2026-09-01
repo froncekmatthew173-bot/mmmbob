@@ -24,6 +24,7 @@ jobs:
             artifact_name: BOB-windows
             needs_webm: true
             webm_rebuild_args: windows -64
+
           - name: Linux
             runner: ubuntu-latest
             target: linux
@@ -32,6 +33,7 @@ jobs:
             artifact_name: BOB-linux
             needs_webm: true
             webm_rebuild_args: linux -64
+
           - name: macOS
             runner: macos-latest
             target: mac
@@ -40,6 +42,7 @@ jobs:
             artifact_name: BOB-macos
             needs_webm: true
             webm_rebuild_args: mac -64
+
           - name: Android
             runner: ubuntu-latest
             target: android
@@ -47,6 +50,7 @@ jobs:
             export_glob: exportJon/debug/android/**
             artifact_name: BOB-android
             needs_webm: false
+
           - name: iOS Simulator
             runner: macos-latest
             target: ios
@@ -102,6 +106,7 @@ jobs:
           haxelib install hscript --quiet
           haxelib install actuate --quiet
           haxelib install newgrounds --quiet
+          haxelib install extension-androidtools --quiet
           haxelib git polymod https://github.com/larsiusprime/polymod.git
           haxelib git discord_rpc https://github.com/Aidan63/linc_discord-rpc
 
@@ -125,4 +130,4 @@ jobs:
         with:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.export_glob }}
-          if-no-files-found: error
+          if-no-files-found: warn
