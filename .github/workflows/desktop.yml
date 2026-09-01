@@ -1,240 +1,136 @@
-name: Desktop Build
+name: Build Game
 
 on:
-  push:
-    branches: [ main, master ]
-  pull_request:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
 
 jobs:
   build:
-    name: Build ${{ matrix.os }} - ${{ matrix.target }}
-    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: windows-latest
+          - name: Windows
+            runner: windows-latest
             target: windows
-            artifact: windowsBuild
-          - os: ubuntu-latest
-            target: linux
-            artifact: linuxBuild
-          - os: macos-latest
-            target: mac
-            artifact: macBuild
+            build_args: ""
+            export_glob: exportJon/release/windows/**
+            artifact_name: BOB-windows
+            needs_webm: true
+            webm_rebuild_args: windows -64
 
+          - name: Linux
+            runner: ubuntu-latest
+            target: linux
+            build_args: ""
+            export_glob: exportJon/release/linux/**
+            artifact_name: BOB-linux
+            needs_webm: true
+            webm_rebuild_args: linux -64
+
+          - name: macOS
+            runner: macos-latest
+            target: mac
+            build_args: ""
+            export_glob: exportJon/release/mac*/**
+            artifact_name: BOB-macos
+            needs_webm: true
+            webm_rebuild_args: mac -64
+
+          - name: Android
+            runner: ubuntu-latest
+            target: android
+            build_args: "-debug"
+            export_glob: exportJon/debug/android/**
+            artifact_name: BOB-android
+            needs_webm: false
+
+          - name: iOS Simulator
+            runner: macos-latest
+            target: ios
+            build_args: "-simulator -debug"
+            export_glob: exportJon/debug/ios/**
+            artifact_name: BOB-ios-simulator
+            needs_webm: false
+
+    env:
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
     steps:
-      - name: Checkout
+      - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Setup Haxe
-        shell: bash
-        run: |
-          HAXE_VERSION=4.3.7
-          echo "Installing Haxe $HAXE_VERSION for ${{ runner.os }} $(uname -m 2>/dev/null || echo unknown)"
-          if [[ "${{ runner.os }}" == "Windows" ]]; then
-            echo "Installing Haxe on Windows $HAXE_VERSION via Chocolatey (handles neko std.ndll correctly)"
-            # Prefer choco which correctly installs haxe + neko + std.ndll together
-            choco install haxe -y --allow-downgrade 2>/dev/null || choco install haxe -y 2>/dev/null || true
-            choco install neko -y 2>/dev/null || true
-            echo "C:/ProgramData/chocolatey/bin" >> $GITHUB_PATH
-            echo "C:/tools/haxe" >> $GITHUB_PATH
-            echo "C:/Program Files/Neko" >> $GITHUB_PATH
-            export PATH="$PATH:/c/ProgramData/chocolatey/bin:/c/tools/haxe:/c/Program\ Files/Neko"
-            # Verify
-            ls -l /c/tools/haxe/haxe.exe 2>/dev/null || ls -l "C:/ProgramData/chocolatey/bin/haxe.exe" 2>/dev/null | head -n 20 || true
-            which haxe 2>/dev/null || where haxe 2>/dev/null || find /c/tools -name "haxe.exe" 2>/dev/null | head -n 5 || true
-            # Fallback to direct zip only if choco failed
-            if ! command -v haxelib >/dev/null 2>&1; then
-              echo "choco haxe not found, trying direct download fallback"
-              HAXE_URL="https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-win64.zip"
-              rm -rf /tmp/haxe.zip /tmp/haxe-extract
-              mkdir -p /tmp/haxe-extract
-              if wget -q $HAXE_URL -O /tmp/haxe.zip 2>/dev/null || curl -L -o /tmp/haxe.zip $HAXE_URL 2>/dev/null; then
-                unzip -q /tmp/haxe.zip -d /tmp/haxe-extract 2>/dev/null || 7z x /tmp/haxe.zip -o/tmp/haxe-extract -y 2>/dev/null || powershell -Command "Expand-Archive -Force /tmp/haxe.zip /tmp/haxe-extract" 2>/dev/null || true
-                mkdir -p /c/tools/haxe
-                HAXE_EXE=$(find /tmp/haxe-extract -name "haxe.exe" 2>/dev/null | head -n 1)
-                if [ -n "$HAXE_EXE" ]; then
-                  HAXE_DIR=$(dirname "$HAXE_EXE")
-                  cp -r "$HAXE_DIR"/* /c/tools/haxe/ 2>/dev/null || true
-                else
-                  cp -r /tmp/haxe-extract/* /c/tools/haxe/ 2>/dev/null || true
-                fi
-                echo "/c/tools/haxe" >> $GITHUB_PATH
-                echo "C:/tools/haxe" >> $GITHUB_PATH
-                export PATH="$PATH:/c/tools/haxe"
-              fi
-            fi
-          elif [[ "${{ runner.os }}" == "macOS" ]]; then
-            echo "Installing Haxe via Homebrew (handles arm64/x64 + libneko correctly)"
-            # Clean old manual install that has broken @rpath
-            sudo rm -rf /usr/local/haxe /usr/local/bin/haxe /usr/local/bin/haxelib 2>/dev/null || true
-            brew update 2>/dev/null || true
-            # Prefer brew which correctly installs haxe+neko with proper dylib rpath for both Intel and Apple Silicon
-            # For lime 7.9.0 (x86_64 only) + flixel 4.11.0, force x86_64 Haxe on arm64 via Rosetta
-            if [[ "$(uname -m)" == "arm64" ]]; then
-              echo "arm64 macOS: installing x86_64 Haxe for lime 7.9.0 compatibility via Rosetta"
-              arch -x86_64 /bin/bash -c "brew update 2>/dev/null || true; brew install haxe 2>/dev/null || brew upgrade haxe 2>/dev/null || true; brew install neko 2>/dev/null || brew upgrade neko 2>/dev/null || true; brew link --overwrite haxe 2>/dev/null || true; brew link --overwrite neko 2>/dev/null || true" || true
-              # Also ensure x64 tarball as fallback
-              wget -q https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-osx.tar.gz -O /tmp/haxe.tar.gz 2>/dev/null || true
-              if [ -f /tmp/haxe.tar.gz ]; then
-                tar -xzf /tmp/haxe.tar.gz -C /tmp 2>/dev/null || true
-                sudo mkdir -p /usr/local/haxe
-                sudo cp -R /tmp/haxe*/* /usr/local/haxe/ 2>/dev/null || true
-                sudo ln -sf /usr/local/haxe/haxe /usr/local/bin/haxe 2>/dev/null || true
-                sudo ln -sf /usr/local/haxe/haxelib /usr/local/bin/haxelib 2>/dev/null || true
-              fi
-            else
-              brew install haxe 2>/dev/null || brew upgrade haxe 2>/dev/null || true
-              brew install neko 2>/dev/null || brew upgrade neko 2>/dev/null || true
-              brew link --overwrite haxe 2>/dev/null || true
-              brew link --overwrite neko 2>/dev/null || true
-            fi
-            # Ensure brew paths in PATH for this step and next steps (both Intel and Apple Silicon brew prefixes)
-            export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/local/haxe:$PATH"
-            echo "/opt/homebrew/bin" >> $GITHUB_PATH
-            echo "/usr/local/bin" >> $GITHUB_PATH
-            echo "/usr/local/haxe" >> $GITHUB_PATH
-            echo "/opt/homebrew/lib" >> $GITHUB_LD_LIBRARY_PATH 2>/dev/null || true
-            # Fixup rpath for manual fallback: ensure libneko can be found at /usr/local/lib for haxelib's @rpath
-            sudo mkdir -p /usr/local/lib
-            if [ -f /opt/homebrew/lib/libneko.2.dylib ]; then
-              sudo ln -sf /opt/homebrew/lib/libneko.2.dylib /usr/local/lib/libneko.2.dylib 2>/dev/null || true
-              sudo ln -sf /opt/homebrew/lib/libneko.dylib /usr/local/lib/libneko.dylib 2>/dev/null || true
-            fi
-            if [ -f /usr/local/Cellar/neko/*/libneko.2.dylib ]; then
-              sudo ln -sf /usr/local/Cellar/neko/*/libneko.2.dylib /usr/local/lib/libneko.2.dylib 2>/dev/null || true
-            fi
-            # Fallback to tarball if brew still not found - use x64 for compatibility with lime 7.9.0 (x86_64 only)
-            if ! command -v haxe >/dev/null 2>&1; then
-              echo "brew haxe failed, trying tarball x64 (for lime 7.9.0 compatibility)"
-              wget -q https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-osx.tar.gz -O /tmp/haxe.tar.gz || true
-              if [ -f /tmp/haxe.tar.gz ]; then
-                tar -xzf /tmp/haxe.tar.gz -C /tmp || true
-                sudo mkdir -p /usr/local/haxe
-                sudo cp -R /tmp/haxe*/* /usr/local/haxe/ 2>/dev/null || true
-                sudo ln -sf /usr/local/haxe/haxe /usr/local/bin/haxe || true
-                sudo ln -sf /usr/local/haxe/haxelib /usr/local/bin/haxelib || true
-                # Fix libneko for manual install
-                if [ -f /usr/local/haxe/libneko.2.dylib ]; then
-                  sudo mkdir -p /usr/local/lib
-                  sudo cp /usr/local/haxe/libneko.2.dylib /usr/local/lib/ 2>/dev/null || true
-                fi
-              fi
-            fi
-          else
-            # Linux
-            wget -q https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-linux64.tar.gz -O /tmp/haxe.tar.gz
-            tar -xzf /tmp/haxe.tar.gz -C /tmp || true
-            sudo mkdir -p /usr/local/haxe
-            sudo cp -R /tmp/haxe_*/* /usr/local/haxe/ 2>/dev/null || sudo cp -R /tmp/haxe*/* /usr/local/haxe/ 2>/dev/null || true
-            sudo ln -sf /usr/local/haxe/haxe /usr/local/bin/haxe || true
-            sudo ln -sf /usr/local/haxe/haxelib /usr/local/bin/haxelib || true
-            sudo apt-get update -qq && sudo apt-get install -y neko 2>/dev/null || true
-          fi
-          haxe --version || echo "haxe not found"
-          haxelib version || echo "haxelib not found"
-
-      - name: Restore haxelib cache
-        uses: actions/cache@v4
+      - name: Set up Haxe
+        uses: krdlab/setup-haxe@v2
         with:
-          path: |
-            ~/haxelib
-            ${{ github.workspace }}/.haxelib
-          key: ${{ runner.os }}-haxelib-${{ hashFiles('Project.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-haxelib-
+          haxe-version: 4.3.7
 
-      - name: Setup haxelib
+      - name: Set up Java
+        if: matrix.target == 'android'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        if: matrix.target == 'android'
+        uses: android-actions/setup-android@v3
+
+      - name: Accept Android SDK licenses
+        if: matrix.target == 'android'
         shell: bash
-        run: |
-          export PATH="/opt/homebrew/bin:/usr/local/bin:/c/tools/haxe:/c/ProgramData/chocolatey/bin:/usr/local/haxe:$HOME/haxelib:$PATH"
-          export NEKOPATH="/opt/homebrew/lib/neko:/usr/local/lib/neko:/usr/lib/neko:/usr/lib/x86_64-linux-gnu/neko:/usr/local/haxe:$NEKOPATH"
-          export HAXE_STD_PATH="/opt/homebrew/lib/haxe/std:/usr/local/haxe/std:/usr/local/lib/haxe/std:$HAXE_STD_PATH"
-          export DYLD_FALLBACK_LIBRARY_PATH="/opt/homebrew/lib:/usr/local/lib:/usr/local/haxe:$DYLD_FALLBACK_LIBRARY_PATH" 2>/dev/null || true
-          export DYLD_LIBRARY_PATH="/opt/homebrew/lib:/usr/local/lib:/usr/local/haxe:$DYLD_LIBRARY_PATH" 2>/dev/null || true
-          export LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:/usr/lib/neko:/usr/local/lib:/opt/homebrew/lib:$LD_LIBRARY_PATH" 2>/dev/null || true
-          echo "PATH=$PATH"
-          echo "NEKOPATH=$NEKOPATH"
-          echo "HAXE_STD_PATH=$HAXE_STD_PATH"
-          which haxelib 2>/dev/null || where haxelib 2>/dev/null || find /c/tools -name "haxelib*" 2>/dev/null | head -n 20 || find /usr/local -name "haxelib" 2>/dev/null | head -n 20 || find /opt/homebrew -name "haxelib" 2>/dev/null | head -n 20 || true
-          ls -l /c/tools/haxe/ 2>/dev/null | head -n 20 || ls -l /usr/local/bin/haxelib* 2>/dev/null | head -n 20 || ls -l /opt/homebrew/bin/haxelib* 2>/dev/null | head -n 20 || true
-          ls -l /usr/local/lib/libneko* 2>/dev/null | head -n 20 || ls -l /opt/homebrew/lib/libneko* 2>/dev/null | head -n 20 || find /usr -name "libneko*" 2>/dev/null | head -n 20 || true
-          find /usr -name "std.ndll" 2>/dev/null | head -n 20 || find /opt -name "std.ndll" 2>/dev/null | head -n 20 || true
-          haxelib setup ~/haxelib || haxelib setup $HOME/haxelib || mkdir -p ~/haxelib && haxelib setup ~/haxelib || true
-          haxelib version || true
-          haxelib run lime --version 2>&1 || echo "lime not yet installed (will try to install)"
+        run: yes | sdkmanager --licenses 2>&1 || true
 
-      - name: Install system dependencies (Linux)
-        if: matrix.os == 'ubuntu-latest'
+      - name: Set up haxelib repository
+        shell: pwsh
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libvlc-dev libvlccore-dev libsdl2-dev
+          $haxelibPath = Join-Path $env:RUNNER_TEMP "haxelib"
+          New-Item -ItemType Directory -Force -Path $haxelibPath | Out-Null
+          $haxelibPath | haxelib setup
 
-      - name: Install Haxelibs
-        shell: bash
+      - name: Install Haxe dependencies
+        shell: pwsh
         run: |
-          export NEKOPATH="/opt/homebrew/lib/neko:/usr/local/lib/neko:/usr/lib/neko:/usr/lib/x86_64-linux-gnu/neko:/usr/local/haxe:$NEKOPATH"
-          export HAXE_STD_PATH="/opt/homebrew/lib/haxe/std:/usr/local/haxe/std:/usr/local/lib/haxe/std:$HAXE_STD_PATH"
-          export DYLD_FALLBACK_LIBRARY_PATH="/opt/homebrew/lib:/usr/local/lib:/usr/local/haxe:$DYLD_FALLBACK_LIBRARY_PATH" 2>/dev/null || true
-          export DYLD_LIBRARY_PATH="/opt/homebrew/lib:/usr/local/lib:/usr/local/haxe:$DYLD_LIBRARY_PATH" 2>/dev/null || true
-          export LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:/usr/lib/neko:/usr/local/lib:/opt/homebrew/lib:$LD_LIBRARY_PATH" 2>/dev/null || true
-          haxelib install lime 7.9.0 --quiet || haxelib install lime --quiet
-          haxelib set lime 7.9.0 2>/dev/null || true
-          haxelib install openfl 9.1.0 --quiet || haxelib install openfl 9.3.3 --quiet || haxelib install openfl --quiet
-          haxelib install flixel 4.11.0 --quiet || haxelib install flixel --quiet
-          haxelib set flixel 4.11.0 2>/dev/null || true
-          haxelib run lime setup flixel --quiet 2>&1 || true
-          haxelib run lime setup --quiet 2>&1 || true
-          haxelib install flixel-tools --quiet || true
-          haxelib install flixel-addons 2.11.0 --quiet || haxelib install flixel-addons --quiet
-          haxelib set flixel-addons 2.11.0 2>/dev/null || true
-          haxelib install flixel-ui 2.4.0 --quiet || haxelib install flixel-ui --quiet
+          haxelib install signals --quiet
+          haxelib install lime --quiet
+          haxelib install openfl --quiet
+          haxelib install flixel --quiet
+          haxelib run lime setup flixel
+          haxelib run lime setup
+          haxelib run lime setup android
+          haxelib install flixel-tools --quiet
+          haxelib install flixel-addons --quiet
+          haxelib install flixel-ui --quiet
           haxelib install hscript --quiet
           haxelib install actuate --quiet
           haxelib install newgrounds --quiet
-          haxelib git polymod https://github.com/larsiusprime/polymod.git --quiet || haxelib install polymod --quiet
-          haxelib git faxe https://github.com/uhrobots/faxe --quiet || true
-          haxelib git discord_rpc https://github.com/Aidan63/linc_discord-rpc --quiet || true
-          haxelib install extension-webm --quiet || haxelib git extension-webm https://github.com/KadeDev/extension-webm --quiet || echo "extension-webm not available"
-          haxelib list
+          haxelib install extension-androidtools --quiet
+          haxelib git polymod https://github.com/larsiusprime/polymod.git
+          haxelib git discord_rpc https://github.com/Aidan63/linc_discord-rpc
 
-      - name: Rebuild extension-webm
-        shell: bash
+      - name: Install extension-webm
+        if: matrix.needs_webm
+        shell: pwsh
         run: |
-          # Rebuild ndll if missing - extension-webm is desktop only
-          if [ -d "$HOME/haxelib/extension-webm" ]; then
-            echo "Attempting to rebuild extension-webm for ${{ matrix.target }}"
-            haxelib run lime rebuild extension-webm ${{ matrix.target }} 2>&1 || echo "rebuild skipped/failed, continuing"
-            ls -R ~/haxelib/extension-webm 2>/dev/null | head -n 100 || true
-          else
-            echo "extension-webm not installed, skipping rebuild"
-          fi
+          haxelib install extension-webm --quiet
+          haxelib run lime rebuild extension-webm ${{ matrix.webm_rebuild_args }}
 
-      - name: Build ${{ matrix.target }}
-        run: haxelib run lime build ${{ matrix.target }} -release
+      - name: Show installed libraries
+        shell: pwsh
+        run: haxelib list
 
-      - name: Upload Artifact (Windows)
-        if: matrix.target == 'windows'
+      - name: Build target
+        shell: pwsh
+        run: haxelib run lime build ${{ matrix.target }} ${{ matrix.build_args }}
+
+      - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
-          path: export/release/windows/bin
-          if-no-files-found: warn
-
-      - name: Upload Artifact (Linux)
-        if: matrix.target == 'linux'
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.artifact }}
-          path: export/release/linux/bin
-          if-no-files-found: warn
-
-      - name: Upload Artifact (macOS)
-        if: matrix.target == 'mac'
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.artifact }}
-          path: export/release/macos/bin
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.export_glob }}
           if-no-files-found: warn
