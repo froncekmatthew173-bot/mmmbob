@@ -181,7 +181,7 @@ jobs:
           fi
           security find-identity -v || true
 
-- name: Install Haxelibs
+      - name: Install Haxelibs
         shell: bash
         run: |
           export NEKOPATH="/opt/homebrew/lib/neko:/usr/local/lib/neko:/usr/lib/neko:/usr/lib/x86_64-linux-gnu/neko:/usr/local/haxe:$NEKOPATH"
