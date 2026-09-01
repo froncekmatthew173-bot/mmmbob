@@ -35,7 +35,7 @@ jobs:
             webm_rebuild_args: linux -64
 
           - name: macOS
-            runner: macos-latest
+            runner: macos-13
             target: mac
             build_args: ""
             export_glob: exportJon/release/mac*/**
@@ -52,7 +52,7 @@ jobs:
             needs_webm: false
 
           - name: iOS Simulator
-            runner: macos-latest
+            runner: macos-13
             target: ios
             build_args: "-simulator -debug"
             export_glob: exportJon/debug/ios/**
