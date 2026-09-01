@@ -59,6 +59,8 @@ jobs:
             artifact_name: BOB-ios-simulator
             needs_webm: false
 
+    env:
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
