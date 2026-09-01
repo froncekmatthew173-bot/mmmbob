@@ -166,6 +166,11 @@ jobs:
       - name: Install Haxelibs
         shell: bash
         run: |
+          export NEKOPATH="/opt/homebrew/lib/neko:/usr/local/lib/neko:/usr/lib/neko:/usr/lib/x86_64-linux-gnu/neko:/usr/local/haxe:$NEKOPATH"
+          export HAXE_STD_PATH="/opt/homebrew/lib/haxe/std:/usr/local/haxe/std:/usr/local/lib/haxe/std:$HAXE_STD_PATH"
+          export DYLD_FALLBACK_LIBRARY_PATH="/opt/homebrew/lib:/usr/local/lib:/usr/local/haxe:$DYLD_FALLBACK_LIBRARY_PATH" 2>/dev/null || true
+          export DYLD_LIBRARY_PATH="/opt/homebrew/lib:/usr/local/lib:/usr/local/haxe:$DYLD_LIBRARY_PATH" 2>/dev/null || true
+          export LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:/usr/lib/neko:/usr/local/lib:/opt/homebrew/lib:$LD_LIBRARY_PATH" 2>/dev/null || true
           haxelib install lime 7.9.0 --quiet || haxelib install lime --quiet
           haxelib set lime 7.9.0 2>/dev/null || true
           haxelib install openfl 9.1.0 --quiet || haxelib install openfl 9.3.3 --quiet || haxelib install openfl --quiet
