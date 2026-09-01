@@ -94,6 +94,7 @@ jobs:
       - name: Install Haxe dependencies
         shell: pwsh
         run: |
+          haxelib install signals --quiet
           haxelib install lime --quiet
           haxelib install openfl --quiet
           haxelib install signals --quiet
