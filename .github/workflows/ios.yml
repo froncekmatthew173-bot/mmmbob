@@ -20,17 +20,14 @@ jobs:
           echo "Installing Haxe $HAXE_VERSION for ${{ runner.os }} $(uname -m 2>/dev/null || echo unknown)"
           if [[ "${{ runner.os }}" == "Windows" ]]; then
             echo "Installing Haxe on Windows $HAXE_VERSION via Chocolatey (handles neko std.ndll correctly)"
-            # Prefer choco which correctly installs haxe + neko + std.ndll together
             choco install haxe -y --allow-downgrade 2>/dev/null || choco install haxe -y 2>/dev/null || true
             choco install neko -y 2>/dev/null || true
             echo "C:/ProgramData/chocolatey/bin" >> $GITHUB_PATH
             echo "C:/tools/haxe" >> $GITHUB_PATH
             echo "C:/Program Files/Neko" >> $GITHUB_PATH
             export PATH="$PATH:/c/ProgramData/chocolatey/bin:/c/tools/haxe:/c/Program\ Files/Neko"
-            # Verify
             ls -l /c/tools/haxe/haxe.exe 2>/dev/null || ls -l "C:/ProgramData/chocolatey/bin/haxe.exe" 2>/dev/null | head -n 20 || true
             which haxe 2>/dev/null || where haxe 2>/dev/null || find /c/tools -name "haxe.exe" 2>/dev/null | head -n 5 || true
-            # Fallback to direct zip only if choco failed
             if ! command -v haxelib >/dev/null 2>&1; then
               echo "choco haxe not found, trying direct download fallback"
               HAXE_URL="https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-win64.zip"
@@ -53,15 +50,11 @@ jobs:
             fi
           elif [[ "${{ runner.os }}" == "macOS" ]]; then
             echo "Installing Haxe via Homebrew (handles arm64/x64 + libneko correctly)"
-            # Clean old manual install that has broken @rpath
             sudo rm -rf /usr/local/haxe /usr/local/bin/haxe /usr/local/bin/haxelib 2>/dev/null || true
             brew update 2>/dev/null || true
-            # Prefer brew which correctly installs haxe+neko with proper dylib rpath for both Intel and Apple Silicon
-            # For lime 7.9.0 (x86_64 only) + flixel 4.11.0, force x86_64 Haxe on arm64 via Rosetta
             if [[ "$(uname -m)" == "arm64" ]]; then
               echo "arm64 macOS: installing x86_64 Haxe for lime 7.9.0 compatibility via Rosetta"
-              arch -x86_64 /bin/bash -c "brew update 2>/dev/null || true; brew install haxe 2>/dev/null || brew upgrade haxe 2>/dev/null || true; brew install neko 2>/dev/null || brew upgrade neko 2>/dev/null || true; brew link --overwrite haxe 2>/dev/null || true; brew link --overwrite neko 2>/dev/null || true" || true
-              # Also ensure x64 tarball as fallback
+              arch -x86_64 /bin/bash -c "brew update 2>/dev/null || true; brew install haxe 2>/dev/null || brew upgrade haxe 2>/dev/null || true; brew install neko 2>/dev/null || brew upgrade neko 2>/dev/null || true"
               wget -q https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-osx.tar.gz -O /tmp/haxe.tar.gz 2>/dev/null || true
               if [ -f /tmp/haxe.tar.gz ]; then
                 tar -xzf /tmp/haxe.tar.gz -C /tmp 2>/dev/null || true
@@ -76,13 +69,11 @@ jobs:
               brew link --overwrite haxe 2>/dev/null || true
               brew link --overwrite neko 2>/dev/null || true
             fi
-            # Ensure brew paths in PATH for this step and next steps (both Intel and Apple Silicon brew prefixes)
             export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/local/haxe:$PATH"
             echo "/opt/homebrew/bin" >> $GITHUB_PATH
             echo "/usr/local/bin" >> $GITHUB_PATH
             echo "/usr/local/haxe" >> $GITHUB_PATH
             echo "/opt/homebrew/lib" >> $GITHUB_LD_LIBRARY_PATH 2>/dev/null || true
-            # Fixup rpath for manual fallback: ensure libneko can be found at /usr/local/lib for haxelib's @rpath
             sudo mkdir -p /usr/local/lib
             if [ -f /opt/homebrew/lib/libneko.2.dylib ]; then
               sudo ln -sf /opt/homebrew/lib/libneko.2.dylib /usr/local/lib/libneko.2.dylib 2>/dev/null || true
@@ -91,7 +82,6 @@ jobs:
             if [ -f /usr/local/Cellar/neko/*/libneko.2.dylib ]; then
               sudo ln -sf /usr/local/Cellar/neko/*/libneko.2.dylib /usr/local/lib/libneko.2.dylib 2>/dev/null || true
             fi
-            # Fallback to tarball if brew still not found - use x64 for compatibility with lime 7.9.0 (x86_64 only)
             if ! command -v haxe >/dev/null 2>&1; then
               echo "brew haxe failed, trying tarball x64 (for lime 7.9.0 compatibility)"
               wget -q https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-osx.tar.gz -O /tmp/haxe.tar.gz || true
@@ -101,7 +91,6 @@ jobs:
                 sudo cp -R /tmp/haxe*/* /usr/local/haxe/ 2>/dev/null || true
                 sudo ln -sf /usr/local/haxe/haxe /usr/local/bin/haxe || true
                 sudo ln -sf /usr/local/haxe/haxelib /usr/local/bin/haxelib || true
-                # Fix libneko for manual install
                 if [ -f /usr/local/haxe/libneko.2.dylib ]; then
                   sudo mkdir -p /usr/local/lib
                   sudo cp /usr/local/haxe/libneko.2.dylib /usr/local/lib/ 2>/dev/null || true
@@ -141,21 +130,20 @@ jobs:
           echo "PATH=$PATH"
           echo "NEKOPATH=$NEKOPATH"
           echo "HAXE_STD_PATH=$HAXE_STD_PATH"
-          which haxelib 2>/dev/null || where haxelib 2>/dev/null || find /c/tools -name "haxelib*" 2>/dev/null | head -n 20 || find /usr/local -name "haxelib" 2>/dev/null | head -n 20 || find /opt/homebrew -name "haxelib" 2>/dev/null | head -n 20 || true
+          which haxelib 2>/dev/null || where haxelib 2>/dev/null || find /c/tools -name "haxelib*" 2>/dev/null | head -n 20 || find /usr/local -name "haxelib" 2>/dev/null | head -n 20 || true
           ls -l /c/tools/haxe/ 2>/dev/null | head -n 20 || ls -l /usr/local/bin/haxelib* 2>/dev/null | head -n 20 || ls -l /opt/homebrew/bin/haxelib* 2>/dev/null | head -n 20 || true
           ls -l /usr/local/lib/libneko* 2>/dev/null | head -n 20 || ls -l /opt/homebrew/lib/libneko* 2>/dev/null | head -n 20 || find /usr -name "libneko*" 2>/dev/null | head -n 20 || true
           find /usr -name "std.ndll" 2>/dev/null | head -n 20 || find /opt -name "std.ndll" 2>/dev/null | head -n 20 || true
           haxelib setup ~/haxelib || haxelib setup $HOME/haxelib || mkdir -p ~/haxelib && haxelib setup ~/haxelib || true
           haxelib version || true
           haxelib run lime --version 2>&1 || echo "lime not yet installed (will try to install)"
+
       - name: Select Xcode
         run: |
           sudo xcode-select -s /Applications/Xcode.app/Contents/Developer || sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer || true
           xcodebuild -version
           xcode-select -p
 
-      # Optional: Import signing certificate if you provide secrets
-      # Requires: IOS_CERTIFICATE (base64 p12), IOS_CERTIFICATE_PASSWORD, IOS_PROVISIONING_PROFILE (base64), KEYCHAIN_PASSWORD
       - name: Import Code Signing Certificate (optional)
         if: env.IOS_CERTIFICATE != ''
         env:
@@ -181,9 +169,10 @@ jobs:
           fi
           security find-identity -v || true
 
-- name: Install Haxelibs
+      - name: Install Haxelibs
         shell: bash
         run: |
+          export PATH="/opt/homebrew/bin:/usr/local/bin:/c/tools/haxe:/c/ProgramData/chocolatey/bin:/usr/local/haxe:$HOME/haxelib:$PATH"
           export NEKOPATH="/opt/homebrew/lib/neko:/usr/local/lib/neko:/usr/lib/neko:/usr/lib/x86_64-linux-gnu/neko:/usr/local/haxe:$NEKOPATH"
           export HAXE_STD_PATH="/opt/homebrew/lib/haxe/std:/usr/local/haxe/std:/usr/local/lib/haxe/std:$HAXE_STD_PATH"
           export DYLD_FALLBACK_LIBRARY_PATH="/opt/homebrew/lib:/usr/local/lib:/usr/local/haxe:$DYLD_FALLBACK_LIBRARY_PATH" 2>/dev/null || true
@@ -215,11 +204,8 @@ jobs:
       - name: Build iOS Debug (Simulator - no signing required)
         shell: bash
         run: |
-          # Clean previous build to avoid Xcode internal inconsistency error
           rm -rf export/ios 2>/dev/null || true
           haxelib run lime build ios -debug -simulator 2>&1 || arch -x86_64 haxelib run lime build ios -debug -simulator 2>&1 || haxelib run lime build ios -debug -simulator
-          # Also try simulator via xcodebuild directly if lime fails
-          # xcodebuild -project export/ios/BOB.xcodeproj -scheme BOB -sdk iphonesimulator -configuration Debug build || true
 
       - name: Build iOS Release (requires signing)
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
