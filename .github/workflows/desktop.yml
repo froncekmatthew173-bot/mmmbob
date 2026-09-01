@@ -99,7 +99,6 @@ jobs:
           haxelib install signals --quiet
           haxelib install lime --quiet
           haxelib install openfl --quiet
-          haxelib install signals --quiet
           haxelib install flixel --quiet
           haxelib run lime setup flixel
           haxelib run lime setup
