@@ -2634,6 +2634,40 @@ class PlayState extends MusicBeatState
 						daNote.y = (strumLine.y - (Conductor.songPosition - daNote.strumTime) * ( -0.45 * FlxMath.roundDecimal(FlxG.save.data.scrollSpeed == 1 ? SONG.speed : FlxG.save.data.scrollSpeed, 2)));
 					else
 						daNote.y = (strumLine.y - (Conductor.songPosition - daNote.strumTime) * (0.45 * FlxMath.roundDecimal(FlxG.save.data.scrollSpeed == 1 ? SONG.speed : FlxG.save.data.scrollSpeed, 2)));
+
+					// fix gap / hold clipping at receptor - only straddling piece
+					if (daNote.isSustainNote && daNote.mustPress && daNote.wasGoodHit)
+					{
+						var center = strumLine.y + Note.swagWidth / 2;
+						// only clip the segment that straddles the receptor center
+						if (daNote.y < center && daNote.y + daNote.height > center)
+						{
+							if (FlxG.save.data.downscroll)
+							{
+								// downscroll: clip top part above center
+								var clipY = (center - daNote.y) / daNote.scale.y;
+								var clipH = daNote.frameHeight - clipY;
+								if (clipH < 0) clipH = 0;
+								daNote.clipRect = new FlxRect(0, clipY, daNote.frameWidth, clipH);
+								daNote.clipRect.y -= 1 / daNote.scale.y;
+								daNote.clipRect.height += 1 / daNote.scale.y;
+							}
+							else
+							{
+								// upscroll: clip bottom part below center
+								var clipH2 = (center - daNote.y) / daNote.scale.y;
+								if (clipH2 < 0) clipH2 = 0;
+								if (clipH2 > daNote.frameHeight) clipH2 = daNote.frameHeight;
+								var rectY = daNote.frameHeight - clipH2;
+								daNote.clipRect = new FlxRect(0, rectY, daNote.frameWidth, clipH2);
+								daNote.clipRect.height += 1 / daNote.scale.y;
+							}
+						}
+						else
+							daNote.clipRect = null;
+					}
+					else if (daNote.clipRect != null)
+						daNote.clipRect = null;
 					//trace(daNote.y);
 					// WIP interpolation shit? Need to fix the pause issue
 					// daNote.y = (strumLine.y - (songTime - daNote.strumTime) * (0.45 * PlayState.SONG.speed));

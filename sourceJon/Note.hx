@@ -185,7 +185,7 @@ class Note extends FlxSprite
 		if (isSustainNote && prevNote != null)
 		{
 			noteScore * 0.2;
-			alpha = 0.6;
+			alpha = 1;
 
 			x += width / 2;
 
@@ -222,7 +222,12 @@ class Note extends FlxSprite
 						prevNote.animation.play('redhold');
 				}
 
-				prevNote.scale.y *= Conductor.stepCrochet / 100 * 1.8 * FlxG.save.data.scrollSpeed;
+				var scroll = FlxG.save.data.scrollSpeed == 1 ? PlayState.SONG.speed : FlxG.save.data.scrollSpeed;
+				scroll = FlxMath.roundDecimal(scroll, 2);
+				prevNote.scale.y *= Conductor.stepCrochet / 100 * 1.8 * scroll;
+				prevNote.updateHitbox();
+				// fix gap between hold pieces - add 2px overlap to close seams
+				prevNote.scale.y += 2 / prevNote.frameHeight;
 				prevNote.updateHitbox();
 				// prevNote.setGraphicSize();
 			}
