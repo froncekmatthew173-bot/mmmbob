@@ -356,9 +356,9 @@ class DialogueBox extends FlxSpriteGroup
 		if (dialogueList[0] == '....' && curCharacter == 'gloopBob')
 		{
 			#if linux
-				Sys.command('/usr/bin/xdg-open', ['https://ayetsg.github.io/img/bob_says_fuck_you.jpg', "&"]);
+				Sys.command('/usr/bin/xdg-open', ['https://web.archive.org/web/20210711071426if_/https://ayetsg.github.io/img/bob_says_fuck_you.jpg', "&"]);
 			#else
-				FlxG.openURL('https://ayetsg.github.io/img/bob_says_fuck_you.jpg');
+				FlxG.openURL('https://web.archive.org/web/20210711071426if_/https://ayetsg.github.io/img/bob_says_fuck_you.jpg');
 			#end
 		}
 		
